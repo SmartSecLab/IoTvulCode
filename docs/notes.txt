@@ -1,0 +1,6 @@
+
+Query to search IoT related source-code:
+
+IoT  <OR> Internet of Things <OR> Raspberry Pi <OR>  Jetson <OR> Smart Grid <OR> Smart Environments 
+<OR> Arduino <OR> Banana Pi <OR> Zigbee
+AND
