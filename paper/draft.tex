@@ -76,7 +76,12 @@ Machine Learning, Natural Language Processing;
 \section{Introduction}
 %################################################################
 
-TBA 
+The Internet of Things (IoT) refers to the growing interconnected physical devices, 
+components, vehicles and home appliances to the internet~\cite{oracle2023:what}.
+These connected devices exchange information to ease our day-to-day lives, business and industries. 
+However, these devices continue to pose security issues and vulnerabilities over the years. 
+
+
 
 %################################################################
 \section{Related Work}
@@ -112,7 +117,7 @@ and Rough Auditing Tool for Security (RATS)~\cite{rats2021:rough}.
 \begin{table*}[!t]
   \centering
   \csvreader[
-    tabular=|m{5cm}|m{7cm}|,
+    tabular=|m{4cm}|m{1cm}|,
     /csv/separator=semicolon,
     table head=\hline \bfseries{urls} & \bfseries{count}  \\\hline,
     late after line=\\\hline, 
@@ -124,9 +129,17 @@ and Rough Auditing Tool for Security (RATS)~\cite{rats2021:rough}.
   \end{table*}
 
 
+  \begin{figure}[h!]
+    \centering
+    \includegraphics[width=10cm]{../figure/vul_sunburst.pdf}
+    \vspace*{-1.5ex}
+    \caption{The sunburst chart showing the frequency of vulnerability categories, names and CWEs}
+    \label{fig:lcurve-iot}
+  \end{figure}
+
 
 %################################################################
-\section{Conclusion and Future work}
+\section{Conclusion and Future Work}
 %################################################################
 \label{conclusion}
 
