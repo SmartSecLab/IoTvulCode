@@ -8,7 +8,11 @@ The proposed framework for vulnerability data collection is as follows:
 
 ![framework](figure/framework.jpg?raw=true "The proposed framework for vulnerability data collection")
 
-#
+
+## Framework for IoT vulnerability detection approach:
+TBA
+
+
 ## Query to search IoT related source-code OSs and application in CVE records:
 
 _IoT_  OR _Internet of Things_ OR _Raspberry Pi_ OR  _Jetson_ OR _Smart Grid_ OR _Smart Environments_ 
