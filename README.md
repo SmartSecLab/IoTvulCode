@@ -1,9 +1,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# Vulnerability detection in IoTs operating systems and applications analyzing open-source code:
+# Vulnerability detection in IoT operating systems and applications analyzing open-source code:
 
 
-# Framework:
+# Framework for IoT vulnerability dataset extraction:
 The proposed framework for vulnerability data collection is as follows:
 
 ![framework](figure/framework.jpg?raw=true "The proposed framework for vulnerability data collection")

@@ -1,4 +1,5 @@
-\documentclass[conference]{IEEEtran}
+% \documentclass[conference]{IEEEtran}
+\documentclass[sigconf,screen,balance,natbib=false,timestamp=false,urlbreakonhyphens=true]{acmart}
 
 %\usepackage{cite}  % conflicts with biblatex
 \usepackage{amsmath,amssymb,amsfonts}
@@ -9,14 +10,14 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[hidelinks]{hyperref}
-\usepackage[capitalize,noabbrev]{cleveref} 
+% \usepackage[capitalize,noabbrev]{cleveref} 
 \usepackage{microtype}
 \usepackage{tabularx}
 \usepackage{booktabs}
 \usepackage[shortlabels,inline]{enumitem}
 \usepackage{xspace}
 \usepackage{balance}
-\usepackage[colorinlistoftodos,prependcaption,textsize=scriptsize]{todonotes}
+\usepackage[colorinlistoftodos,textsize=scriptsize]{todonotes}
 \usepackage[type={CC}, modifier={by}, version={4.0}]{doclicense}
 \usepackage{listings}
 \usepackage{multicol}
@@ -52,25 +53,25 @@
 }
 
 % add IEEE COPYRIGHT here
-\IEEEoverridecommandlockouts
+% \IEEEoverridecommandlockouts
 % \IEEEpubid{\makebox[\columnwidth]{978-1-6654-8045-1/22/\$31.00~\copyright2022 IEEE \hfill} 
-\IEEEpubid{\makebox[\columnwidth]{978-1-6654-8045-1/22/\$31.00~\copyright2022 IEEE \hfill} \hspace{\columnsep}\makebox[\columnwidth]{ }}
-
-
-\maketitle  
+% \IEEEpubid{\makebox[\columnwidth]{978-1-6654-8045-1/22/\$31.00~\copyright2022 IEEE \hfill} \hspace{\columnsep}\makebox[\columnwidth]{ }}
 
 % CopyRight command
-\IEEEpubidadjcol
+% \IEEEpubidadjcol
 
 \begin{abstract}
 TBA
 \end{abstract}
 
-\begin{IEEEkeywords}
+% \begin{IEEEkeywords}
+  \keywords{
 Cybersecurity, Internet of Things, IoT security, Smart Environments, 
 Machine Learning, Natural Language Processing;
-\end{IEEEkeywords}
+  }
+% \end{IEEEkeywords}
 
+\maketitle
 
 %################################################################
 \section{Introduction}
@@ -88,7 +89,7 @@ However, these devices continue to pose security issues and vulnerabilities over
 %################################################################
 
 Al‑Boghdady et al.~\cite{al-boghdady2022:idetect} have created a tool called iDetect for detecting 
-vulnerabilities in C/C++ source code of IoT operating systems (OSs). 
+vulnerabilities in the C/C++ source code of IoT operating systems (OSs). 
 The labeling of the dataset was done using static code analyzing tools (SATs);
 Cppcheck version 2.1~\cite{cppcheck2.12021:tool}, 
 Flawfinder version 2.0.11~\cite{dwheeler2021:flawfinder}, 
