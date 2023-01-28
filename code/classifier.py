@@ -139,6 +139,22 @@ if CLASS_MODEL=='RNN':
 elif CLASS_MODEL=='CNN':
     model = CNN()
     print(model.summary())
+    
+    # Fit model and Cross-Validation, Training Model 2 CONV + FULLY CONNECTED
+    CNN_model = CNN()
+    history = CNN_model.fit(X_train, target_train, epochs=800, batch_size=64)
+    loss, accuracy = CNN_model.evaluate(X_test, target_test, verbose=1)
+
+    print(history.history.keys())
+    plt.plot(history.history['acc'])
+    #plt.plot(history.history['loss'])
+    plt.title('The CNN model accuracy')
+    plt.ylabel('Accuracy')
+    plt.xlabel('Epoch')
+    plt.legend(['Accuracy'], loc='lower right')
+    plt.show()
+
+    print('\nFinal Cross-Validation Accuracy of CNN training model', accuracy, '\n')
 
 else:
     print('Invalid Model! Please select the valid model!')

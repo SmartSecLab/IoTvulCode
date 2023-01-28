@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+import keras
 from keras import backend as K
 from keras import regularizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
@@ -50,8 +51,9 @@ def CNN(max_len=150, emb_dim=32, max_vocab_len=150, W_reg=regularizers.l2(1e-4))
     
     def get_conv_layer(emb, kernel_size=5, filters=150):
         # Conv layer
-        conv = Convolution1D(kernel_size=kernel_size, filters=filters, \
-                     border_mode='same')(emb)
+        # conv = Convolution1D(kernel_size=kernel_size, filters=filters, \
+        #              border_mode='same')(emb)  # Original with tf1.5 now 'boarder_mode' is 'padding'
+        conv = Convolution1D(kernel_size=kernel_size, filters=filters, padding='same')(emb)
         conv = ELU()(conv)
 
         conv = Lambda(sum_1d, output_shape=(filters,))(conv)
@@ -71,19 +73,30 @@ def CNN(max_len=150, emb_dim=32, max_vocab_len=150, W_reg=regularizers.l2(1e-4))
 
     hidden1 = Dense(1024)(merged)
     hidden1 = ELU()(hidden1)
-    hidden1 = BatchNormalization(mode=0)(hidden1)
+    if int(keras.__version__.split('.')[0])<2:
+        hidden1 = BatchNormalization(mode=0)(hidden1)
+    else:
+        hidden1 = BatchNormalization()(hidden1)
     hidden1 = Dropout(0.5)(hidden1)
 
     hidden2 = Dense(1024)(hidden1)
     hidden2 = ELU()(hidden2)
-    hidden2 = BatchNormalization(mode=0)(hidden2)
+    # hidden2 = BatchNormalization(mode=0)(hidden2)
+    if int(keras.__version__.split('.')[0])<2:
+        hidden2 = BatchNormalization(mode=0)(hidden2)
+    else:
+        hidden2 = BatchNormalization()(hidden2)
     hidden2 = Dropout(0.5)(hidden2)
       
-        # Output layer (last fully connected layer)
+    # Output layer (last fully connected layer)
     output = Dense(55, activation='softmax', name='output')(hidden2)
     
-        # Compile model and define optimizer
-    model = Model(input=[main_input], output=[output])
+    # Compile model and define optimizer
+    if int(keras.__version__.split('.')[0])<2:
+        model = Model(input=[main_input], output=[output]) 
+    else:
+        model = Model(inputs=[main_input], outputs=[output])
+        
     adam = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
     model.compile(optimizer=adam, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
     return model
