@@ -1,3 +1,15 @@
+"""
+Copyright (C) 2023 Kristiania University College- All Rights Reserved
+You may use, distribute and modify this code under the
+terms of the MIT license.
+You should have received a copy of the MIT license with
+this file. If not, please write to: https://opensource.org/licenses/MIT
+
+Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smart Environments 
+(funded from the European Union’s Horizon 2020, NGI-POINTER under grant agreement No 871528).
+@Developer: Guru Bhandari
+"""
+
 import json
 import os
 import re
@@ -34,9 +46,111 @@ warnings.filterwarnings("ignore")
 
 ## Training Model 2 - 1D Convolutions and Fully Connected Layers
 
-#CNN Model for Binary Classification
+# <Guru> Under Construction: implementation of class to share common variables in the functions.
+# class MyClass(object):
+#     def __init__(self):
+#         self.a = ['A','X','R','N','L']  # Shared instance member :D
 
-def CNN(max_len=150, emb_dim=32, max_vocab_len=150, W_reg=regularizers.l2(1e-4)):
+
+# class ApplyDNN:
+#     def __init__(self, config):
+#         # function arguments:
+#         self.max_len = config['preprocess']['max_len'] 
+#         self.input_length = config['dnn']['input_length']
+#         self.input_dim = config['dnn']['input_dim']
+#         self.output_dim = config['dnn']['output_dim']
+#         self.emb_dim = config['dnn']['output_dim']
+#         self.max_vocab_len = config['preprocess']['max_vocab_len']
+#         self.dropout = config['dnn']['dropout']
+#         self.recur_dropout = config['dnn']['recur_dropout']
+
+#         # Optimizer arguments:
+#         self.learn_rate = float(config['dnn']['lr'])
+#         self.beta_1 = config['dnn']['beta_1']
+#         self.beta_2 = config['dnn']['beta_2']
+#         self.epsilon = float(config['dnn']['epsilon'])
+#         self.decay = config['dnn']['decay']
+#         self.loss = config['dnn']['loss']
+    
+#         # Metrics
+#         self.metrics = ['acc']
+#         print(self.loss)
+        
+    def RNN(config):
+        """
+        RNN Model for Binary Classification
+        <guru> both Binary and Multi-Class codes are identical, I don't know why author making confusion making 
+        multiple replications without their distinct applications.
+        """
+
+        # function arguments:
+        max_len = config['preprocess']['max_len'] 
+        input_length = config['dnn']['input_length']
+        input_dim = config['dnn']['input_dim']
+        output_dim = config['dnn']['output_dim']
+        emb_dim = config['dnn']['output_dim']
+        max_vocab_len = config['preprocess']['max_vocab_len']
+        dropout = config['dnn']['dropout']
+        recur_dropout = config['dnn']['recur_dropout']
+        
+        # Optimizer arguments:
+        learn_rate = float(config['dnn']['lr'])
+        beta_1 = config['dnn']['beta_1']
+        beta_2 = config['dnn']['beta_2']
+        epsilon = float(config['dnn']['epsilon'])
+        decay = config['dnn']['decay']
+        loss = config['dnn']['loss']
+        
+        # Metrics
+        metrics = ['acc']
+        
+        # Main Input
+        main_input = Input(shape=(max_len,), dtype='int32')
+
+        # Embedding Layers
+        # Emb_Layer = Embedding(input_dim=150, output_dim=32, input_length=150, 
+        # W_regularizer=regularizers.l2(1e-4))(main_input)  # original license
+        Emb_Layer = Embedding(input_dim=input_dim, output_dim=output_dim, input_length=input_length)(main_input) 
+        Emb_Layer = Bidirectional(SimpleRNN(input_dim, 
+                                            return_sequences=False, 
+                                            dropout=dropout, 
+                                            recurrent_dropout=recur_dropout))(Emb_Layer)
+        # <guru> I think the activation function should be 'sigmoid' here for binary classification???
+        Emb_Layer = Dense(55, activation='softmax')(Emb_Layer)  
+        # RNN Model Settings
+        model = Model(inputs=main_input, outputs=Emb_Layer)
+        adam = Adam(lr=learn_rate, beta_1=beta_1, beta_2=beta_2, epsilon=epsilon, decay=decay)
+        model.compile(optimizer=adam, loss=loss, metrics=metrics)
+        print(model.summary())
+        return model
+    
+    
+def CNN(config):
+    """
+    CNN Model for Binary Classification
+    """
+    # function arguments:
+    max_len = config['preprocess']['max_len'] 
+    input_length = config['dnn']['input_length']
+    input_dim = config['dnn']['input_dim']
+    output_dim = config['dnn']['output_dim']
+    emb_dim = config['dnn']['output_dim']
+    max_vocab_len = config['preprocess']['max_vocab_len']
+    dropout = config['dnn']['dropout']
+    recur_dropout = config['dnn']['recur_dropout']
+    
+    # Optimizer arguments:
+    learn_rate = float(config['dnn']['lr'])
+    beta_1 = config['dnn']['beta_1']
+    beta_2 = config['dnn']['beta_2']
+    epsilon = float(config['dnn']['epsilon'])
+    decay = config['dnn']['decay']
+    loss = config['dnn']['loss']
+    l2_reg = float(config['dnn']['l2_reg'])  #<Guru> TBD: apply this on tf2/keras2 version.
+    
+    # Metrics
+    metrics = ['acc']
+    
     # Input
     main_input = Input(shape=(max_len,), dtype='int32', name='main_input')
     # Embedding layer
@@ -61,7 +175,7 @@ def CNN(max_len=150, emb_dim=32, max_vocab_len=150, W_reg=regularizers.l2(1e-4))
         conv = Dropout(0.5)(conv)
         return conv
     
-        # Multiple Conv Layers
+    # Multiple Conv Layers
     # calling custom conv function from above
     conv1 = get_conv_layer(emb, kernel_size=2, filters=150)
     conv2 = get_conv_layer(emb, kernel_size=3, filters=150)
@@ -91,14 +205,17 @@ def CNN(max_len=150, emb_dim=32, max_vocab_len=150, W_reg=regularizers.l2(1e-4))
     # Output layer (last fully connected layer)
     output = Dense(55, activation='softmax', name='output')(hidden2)
     
-    # Compile model and define optimizer
+    # Compile model 
     if int(keras.__version__.split('.')[0])<2:
         model = Model(input=[main_input], output=[output]) 
     else:
         model = Model(inputs=[main_input], outputs=[output])
         
-    adam = Adam(lr=1e-4, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-    model.compile(optimizer=adam, loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    # CNN Model Settings and define optimizer
+    model = Model(inputs=main_input, outputs=[output])
+    adam = Adam(lr=learn_rate, beta_1=beta_1, beta_2=beta_2, epsilon=epsilon, decay=decay)
+    model.compile(optimizer=adam, loss=loss, metrics=metrics)
+    print(model.summary())
     return model
 
 
