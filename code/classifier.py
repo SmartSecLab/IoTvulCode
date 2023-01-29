@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from keras.utils import np_utils, pad_sequences
-from models import CNN, RNN, ApplyDNN
+from models import ApplyDNN
 from plot import plot_metrics
 from sklearn import model_selection
 
@@ -134,10 +134,11 @@ if __name__ == '__main__':
         test_size=test_size, 
         random_state=seed)
 
+    mdl_obj = ApplyDNN(config)
     if CLASS_MODEL=='RNN':
-        model = RNN(config)
+        model = mdl_obj.RNN()
     elif CLASS_MODEL=='CNN':
-        model = CNN(config)
+        model = mdl_obj.CNN()
     else:
         print('Invalid Model! Please select the valid model!')
         exit(1)
