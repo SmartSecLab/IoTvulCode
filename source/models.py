@@ -35,6 +35,7 @@ from keras.preprocessing import sequence
 from keras.utils import np_utils
 from keras_metrics import metrics as km
 from matplotlib import pyplot
+from nltk.tokenize.regexp import WhitespaceTokenizer
 from sklearn import model_selection
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -42,7 +43,6 @@ from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import KFold, RepeatedKFold, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
-from nltk.tokenize.regexp import WhitespaceTokenizer
 
 warnings.filterwarnings("ignore")
 
@@ -252,6 +252,35 @@ class Classifier:
         return model
 
 
+    def apply_multiDNN(self):
+        """ multi-layer DNN model for the training
+        """
+        model = Sequential()
+        model.add(Dense(2000, activation='relu',input_dim=self.input_dim))
+        model.add(Dense(1500, activation='relu'))
+        model.add(Dropout(0.2))
+        model.add(Dense(800,activation='relu'))
+        model.add(Dropout(0.2))
+        model.add(Dense(400,activation='relu'))
+        model.add(Dropout(0.2))
+        model.add(Dense(150,activation='relu'))
+        model.add(Dropout(0.2))
+        model.add(Dense(self.output_dim, activation='softmax'))
+        adam = Adam(
+            lr=self.learn_rate,
+            beta_1=self.beta_1,
+            beta_2=self.beta_2,
+            epsilon=self.epsilon,
+            decay=self.decay
+            )
+        model.compile(optimizer=self.optimizer,
+                      loss=self.loss,
+                      metrics=self.metrics)
+        print(model.summary())
+        print(model.summary())
+        return model
+    
+
     def preprocess4RF(self, code_snippet):
         """ Preprocessing data for Random Forest model training
         """
@@ -263,7 +292,7 @@ class Classifier:
         token_pattern = r"""([A-Za-z_]\w*\b|[!\#\$%\&\*\+:\-\./<=>\?@\\\^_\|\~]+|[ \t\(\),;\{\}\[\]"'`])"""
         vectorizer = TfidfVectorizer(token_pattern=token_pattern, max_features=3000)
         return transformer, vectorizer
-
+        
     
     def apply_RF(self, df):
         """ Defining the Training Model Classifier for Binary Classification

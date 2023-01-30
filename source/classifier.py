@@ -151,6 +151,8 @@ if __name__ == "__main__":
         model = mdl_obj.apply_LSTM()
     elif CLASS_MODEL == "RF":
         model = mdl_obj.apply_RF(df)
+    elif CLASS_MODEL == "multiDNN":
+        model = mdl_obj.apply_multiDNN()
     else:
         print("Invalid Model! Please select any valid model!")
         exit(1)
