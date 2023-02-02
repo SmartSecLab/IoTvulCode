@@ -8,13 +8,14 @@ this file. If not, please write to: https://opensource.org/licenses/MIT
 Authors: Guru Bhandari, and Andrii Shalaginov
 Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smart Environments 
 (funded from the European Union’s Horizon 2020, NGI-POINTER under grant agreement No 871528).
-"""
 
-# Code to retrieve the references of IoT projects.
-# Obtaining and processing CVE json **files**
-# The code is to download nvdcve zip files from NIST since 2002 to the current year,
-# unzip and append all the JSON files together,
-# and extracts all the entries from json files of the projects.
+File Description:
+Code to retrieve the references of IoT projects.
+Obtaining and processing CVE json **files**
+The code is to download nvdcve zip files from NIST since 2002 to the current year,
+unzip and append all the JSON files together,
+and extracts all the entries from JSON files of the projects.
+"""
 
 import datetime
 import json
