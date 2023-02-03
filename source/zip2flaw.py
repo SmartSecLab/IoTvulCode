@@ -106,4 +106,4 @@ def url_zip2df(url):
 
 if __name__ == "__main__":
     url  = 'https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download'
-    url_zip2df(url)
+    url_zip2df(url).to_csv('../data/')
