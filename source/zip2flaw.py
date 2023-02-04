@@ -7,18 +7,29 @@ import re
 import os
 import csv
 import subprocess
+
 import requests
 import tempfile
 from io import BytesIO, StringIO
 from zipfile import ZipFile
 from guesslang import Guess
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import lizard
+import subprocess as sub
+from pylibsrcml import srcml
+import itertools
 
+
+pl_list = ['C', 'C++']
 
 def check_internet(url):
     response = requests.get(url)
     return True if response.status_code < 400 else False
     
-    
+
 def retrieve_zip(url):
     """ Fetching list of C/C++ files from zip file of the project url. 
     """
@@ -29,6 +40,59 @@ def retrieve_zip(url):
     else:
         print('Internet is not working!')
         return None
+
+
+# Fetching the functions which have given line context/statement.
+def file2metrics(source_file, df_flaw):
+    """ split the given file into a list of function blocks and return their metrics into a dataframe
+    """ 
+    lines = list(set(list(df_flaw.Line)))
+    df = pd.DataFrame()
+    
+    with open(source_file, "r") as fp:  
+        liz_file = lizard.analyze_file.analyze_source_code(source_file,  fp.read())
+        
+        for x in range(len(liz_file.function_list)):
+            
+            fun_metrics = liz_file.function_list[x].__dict__
+            df_fun = pd.DataFrame()
+            df_fun = pd.DataFrame.from_dict(fun_metrics)
+            
+            start = int(fun_metrics['start_line'])
+            end = int(fun_metrics['end_line']) 
+            fp.seek(0) # move header to the initial point of the file
+
+            vul_statement, cwe, vul_bool = '', [], False
+            
+            for l in lines:      
+                code_lines = [line for line in itertools.islice(fp, start, end)]
+                df_fun['code'] =  fun_metrics['long_name'] + ''.join(code_lines) 
+                
+                # check if the vulnerability content/statement appear in the function block or not.
+                if start <= l <= end:
+                    vul_bool =  True 
+                    # vul_statement = vul_statement + ' \n ' +  df_flaw[df_flaw.Line==l]['Context'].values[0]
+                    vul_statement = df_flaw[df_flaw.Line==l]['Context'].values[0]
+                    vul_type = df_flaw[df_flaw.Line==l]['CWEs'].values[0]
+                    cwe.append((vul_type, vul_statement))
+
+                df_fun['CWEs'] = str(cwe)
+                # df_fun['vul_statements'] = vul_statement
+                
+            df_fun['is_vul'] = vul_bool  
+            df = pd.concat([df, df_fun])
+    
+    print(f'Dataframe of a file: {source_file}, \n {df}')
+            
+    # <guru> I think there is a problem in lizard detecting the correct full_parameters 
+    # either we have to concatenate two lines of full_parameters or ignore it and take it from long_name if needed. 
+    # drop['full_parameters', 'fan_in', 'fan_out', 'general_fan_out'] because lizard has not properly 
+    # implemented these parameters yet.
+    
+    cols_filter = ['full_parameters', 'fan_in', 'fan_out', 'general_fan_out']
+    df = df.drop(cols_filter, axis=1).drop_duplicates().reset_index(drop=True)
+    print('Shape of the dataframe: ', df.shape)
+    return df
 
 
 def guess_pl(file, zip_obj=None):
@@ -64,6 +128,8 @@ def file2df(file, zip_obj=None):
     """ convert zipped file stream - tempfile to pandas dataframe. 
     """
     file_content = ''
+    df_flaw = pd.DataFrame()
+    df_metrics = pd.DataFrame()
     
     if zip_obj:
         # io.StringIO(sf.read().decode("utf-8")).read()
@@ -76,18 +142,25 @@ def file2df(file, zip_obj=None):
 
     fp = tempfile.NamedTemporaryFile(suffix='_Flawfinder',
                                     prefix='Filename_')
+    
     # deal with the temp file of extracted zipped file
     try:
         fp.write(file_content)
         fp.seek(0)  # move reader's head to the initial point of the file. 
         file_name = fp.name
-        df = find_flaw(file_name)
+        df_flaw = find_flaw(file_or_dir = file_name).reset_index(drop=True)
+        
+        if len(df_flaw)>0:
+            df_metrics = file2metrics(source_file=file_name, df_flaw=df_flaw)
+            print(f'Shape of the found flaws data of the file: {df_flaw.shape}')
+            print(f'Shape of the file flaws metrics: {df_metrics.shape}')
+        
     except OSError:
         print("Could not open/read file:", fp)
         sys.exit(1)
     finally:
         fp.close()
-    return df.reset_index(drop=True)
+    return df_flaw, df_metrics
 
 
 def url_zip2df(url):
@@ -97,13 +170,34 @@ def url_zip2df(url):
     print('Generating composite dataframe from the given project URL of zip file...\n', url)
     print('='*35)
     zipobj = retrieve_zip(url)
-    files = zipobj.namelist() 
-    selected_files = [x for x in files if guess_pl(x, zipobj) in ['C', 'C++']]
-    df = pd.concat([file2df(selected_files[i], zipobj) for i in range(len(selected_files))])
-    print('Shape of the data:', df.shape)
-    return df.reset_index(drop=True)
+    files = zipobj.namelist()
+    selected_files = [x for x in files if guess_pl(x, zipobj) in pl_list]
+    
+    if selected_files:
+        df_flaw_prj = pd.DataFrame()
+        df_metrics_prj = pd.DataFrame()
+        
+        for i in range(len(selected_files)):
+            df_flaw_file, df_metrics_file = file2df(selected_files[i], zipobj)
+            df_flaw_prj = pd.concat([df_flaw_prj, df_flaw_file])
+            df_metrics_prj = pd.concat([df_metrics_prj, df_metrics_file])
+            
+        print('Shape of the FlawFinder data of the project:', df_flaw_prj.shape)
+        print('Shape of the function level metrics data of the project:', df_metrics_prj.shape)
+        return df_flaw_prj.reset_index(drop=True), df_metrics_prj.reset_index(drop=True)
+    else:
+        print('There is not any files in the project specified by the given programming language: {pl_list}')
+        return None, None
 
 
 if __name__ == "__main__":
-    url  = 'https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download'
-    url_zip2df(url).to_csv('../data/')
+    # Example: The list of the URL links of the project zip files.
+    url  = ['https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download']
+    
+    df_flaw, df_metrics = url_zip2df(url)
+    
+    if len(df_flaw)>0 and len(df_metrics)>0:
+        df_flaw.to_csv('data/contiki24_flaw.csv')
+        df_metrics.to_csv('data/contiki24_metrics.csv')
+    else:
+        print('The given project URL does not have any specified files to analyze!')
