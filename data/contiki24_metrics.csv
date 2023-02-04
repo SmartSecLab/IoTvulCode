@@ -1,0 +1,57 @@
+,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,filename,top_nesting_level,code,CWEs,is_vul
+0,1,7,30,mac_ethernetSetup,mac_ethernetSetup( void),204,217,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,"mac_ethernetSetup( void)    ETHBUF(raw_buf)->dest.addr[3] = UIP_IP_BUF->destipaddr.u8[13];
+    ETHBUF(raw_buf)->dest.addr[4] = UIP_IP_BUF->destipaddr.u8[14];
+    ETHBUF(raw_buf)->dest.addr[5] = UIP_IP_BUF->destipaddr.u8[15];
+  } else {
+
+	//Otherwise we have a real address
+	mac_createEthernetAddr((uint8_t *) &(ETHBUF(raw_buf)->dest.addr[0]),
+            (uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_RECEIVER));
+
+  }
+
+  mac_createEthernetAddr((uint8_t *) &(ETHBUF(raw_buf)->src.addr[0]),
+                         (uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER));
+",[],False
+1,15,49,369,mac_ethernetToLowpan,mac_ethernetToLowpan( uint8_t * ethHeader),224,298,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_ethernetToLowpan( uint8_t * ethHeader),[],False
+2,3,22,232,mac_LowpanToEthernet,mac_LowpanToEthernet( void),305,345,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_LowpanToEthernet( void),[],False
+3,3,9,34,mac_translateIPLinkLayer,mac_translateIPLinkLayer( lltype_t target),358,371,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_translateIPLinkLayer( lltype_t target),[],False
+4,22,81,507,mac_translateIcmpLinkLayer,mac_translateIcmpLinkLayer( lltype_t target),398,531,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_translateIcmpLinkLayer( lltype_t target),[],False
+5,6,31,261,mac_createSicslowpanLongAddr,"mac_createSicslowpanLongAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)",539,595,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,"mac_createSicslowpanLongAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)","[('CWE-120', '\t\tmemcpy((uint8_t *)lowpan, uip_lladdr.addr, 8);')]",True
+6,15,50,458,mac_createEthernetAddr,"mac_createEthernetAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)",603,690,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,"mac_createEthernetAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)","[('CWE-120', '\t\tmemcpy(ethernet, &uip_lladdr.addr[2], 6);')]",True
+7,5,15,88,slide,"slide( uint8_t * data , uint8_t length , int16_t slide)",701,723,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,"slide( uint8_t * data , uint8_t length , int16_t slide)",[],False
+8,6,11,47,mac_ethhijack,mac_ethhijack( const struct mac_driver * r),733,752,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_ethhijack( const struct mac_driver * r),[],False
+9,2,5,21,mac_ethhijack_nondata,mac_ethhijack_nondata( const struct mac_driver * r),756,760,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_ethhijack_nondata( const struct mac_driver * r),[],False
+10,4,32,325,mac_logTXtoEthernet,"mac_logTXtoEthernet( frame_create_params_t * p , frame_result_t * frame_result)",771,824,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,"mac_logTXtoEthernet( frame_create_params_t * p , frame_result_t * frame_result)","[('CWE-120', '  memcpy(&raw_buf[UIP_LLH_LEN], frame_result->frame, frame_result->length);')]",True
+11,3,27,280,mac_802154raw,mac_802154raw( const struct mac_driver * r),835,878,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_802154raw( const struct mac_driver * r),"[('CWE-120', '  memcpy(&raw_buf[UIP_LLH_LEN], radio_frame_data(), radio_frame_length());')]",True
+12,1,4,17,slip_set_input_callback,slip_set_input_callback( void(*c)(void)),93,96,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,"slip_set_input_callback( void(*c)(void))  }
+
+  /* There could be a separate poll routine for this. */
+",[],False
+13,1,4,17,slip_set_tcpip_input_callback,slip_set_tcpip_input_callback( void(*c)(void)),99,102,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,slip_set_tcpip_input_callback( void(*c)(void)),[],False
+14,5,24,114,slip_send,slip_send( void),106,132,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,slip_send( void),[],False
+15,4,20,99,slip_write,"slip_write( const void * _ptr , int len)",136,158,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,"slip_write( const void * _ptr , int len)",[],False
+16,1,5,18,rxbuf_init,rxbuf_init( void),161,165,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,rxbuf_init( void),[],False
+17,18,66,403,slip_poll_handler,"slip_poll_handler( uint8_t * outbuf , uint16_t blen)",169,251,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,"slip_poll_handler( uint8_t * outbuf , uint16_t blen)","[('CWE-120', '\tmemcpy(outbuf, &rxbuf[begin], len);')]",True
+18,16,51,323,PROCESS_THREAD,"PROCESS_THREAD( slip_process , ev , data)",253,313,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,"PROCESS_THREAD( slip_process , ev , data)","[('CWE-119!/CWE-120', '      char buf[8];'), ('CWE-120', '      memcpy(&buf[0], ""=IPA"", 4);'), ('CWE-120', '      memcpy(&buf[4], &uip_hostaddr, 4);')]",True
+19,16,63,252,slip_input_byte,slip_input_byte( unsigned char c),316,391,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,slip_input_byte( unsigned char c),[],False
+20,1,1,13,htons,htons( u16_t val),21,21,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,htons( u16_t val),[],False
+21,3,11,95,uip_netif_addr_autoconf_set,"uip_netif_addr_autoconf_set( uip_ipaddr_t * ipaddr , uip_lladdr_t * lladdr)",28,49,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,"uip_netif_addr_autoconf_set( uip_ipaddr_t * ipaddr , uip_lladdr_t * lladdr)","[('CWE-120', '  memcpy(ipaddr->u8 + 8, lladdr, UIP_LLADDR_LEN);'), ('CWE-120', '  memcpy(ipaddr->u8 + 8, lladdr, 3);'), ('CWE-120', '  memcpy(ipaddr->u8 + 13, lladdr + 3, 3);')]",True
+22,1,4,18,uip_netif_addr_add,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)",52,55,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)",[],False
+23,5,24,124,chksum,"chksum( u16_t sum , const u8_t * data , u16_t len)",59,87,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,"chksum( u16_t sum , const u8_t * data , u16_t len)",[],False
+24,2,11,101,upper_layer_chksum,upper_layer_chksum( u8_t proto),90,108,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,upper_layer_chksum( u8_t proto),[],False
+25,1,4,12,uip_icmp6chksum,uip_icmp6chksum( void),112,115,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,uip_icmp6chksum( void),[],False
+26,1,12,50,usage,usage( int result),40,51,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_y41tn6w__Flawfinder,0,"usage( int result)	      fprintf(stderr, ""**** slip overflow\n"");
+	      index = 0;
+	      flags = 2;
+	    }
+	    break;
+	  }
+	  break;
+	}
+      }
+
+      /* after processing for some output modes */
+",[],False
+27,8,25,164,print_hex_line,"print_hex_line( unsigned char * prefix , unsigned char * outbuf , int index)",54,79,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_y41tn6w__Flawfinder,0,"print_hex_line( unsigned char * prefix , unsigned char * outbuf , int index)",[],False
+28,59,241,1355,main,"main( int argc , char ** argv)",81,368,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_y41tn6w__Flawfinder,0,"main( int argc , char ** argv)","[('CWE-120, CWE-20', '      int i, j, n = read(fd, buf, sizeof(buf));'), ('CWE-362', '  fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY | O_DIRECT | O_SYNC );'), ('CWE-120, CWE-20', '      int n = read(fileno(stdin), buf, sizeof(buf));'), ('CWE-126', '\tif(strlen(&argv[index][2]) == 0) {'), ('CWE-676', '\t      usleep(6000);'), ('CWE-119!/CWE-120', '  unsigned char buf[BUFSIZE], outbuf[HCOLS];')]",True
