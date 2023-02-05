@@ -3,14 +3,16 @@
 # Vulnerability detection in IoT operating systems and applications analyzing open-source code:
 
 
-## Framework for IoT vulnerability dataset extraction:
-The proposed framework for vulnerability data collection is as follows:
+## Dataset extraction approach for IoT vulnerability analysis:
+The proposed method for vulnerability data collection is as follows:
 
 ![framework](figure/framework.jpg?raw=true "The proposed framework for vulnerability data collection")
 
 
-## Framework for IoT vulnerability detection approach:
-TBA
+## Method for IoT vulnerability detection approach:
+The novel vulnerability detection approach in IoT OSs and applications:
+
+![framework](figure/MLframework.jpg?raw=true "The proposed method for vulnerability detection in IoT OSs and applications")
 
 
 ## Query to search IoT related source-code OSs and application in CVE records:
