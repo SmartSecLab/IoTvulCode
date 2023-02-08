@@ -9,13 +9,13 @@ The proposed method for vulnerability data collection is as follows:
 ![framework](figure/framework.jpg?raw=true "The proposed framework for vulnerability data collection")
 
 
-## Method for IoT vulnerability detection approach:
+## Method for IoT vulnerability detection:
 The novel vulnerability detection approach in IoT OSs and applications:
 
 ![framework](figure/MLframework.jpg?raw=true "The proposed method for vulnerability detection in IoT OSs and applications")
 
 
-## Query to search IoT related source-code OSs and application in CVE records:
+## Query to search IoT related source-code OSs and applications in CVE records:
 
 _IoT_  OR _Internet of Things_ OR _Raspberry Pi_ OR  _Jetson_ OR _Smart Grid_ OR _Smart Environments_ 
 OR _Arduino_ OR _Banana Pi_ OR _Zigbee_
