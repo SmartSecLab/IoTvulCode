@@ -197,4 +197,5 @@ def import_cves():
     print("-" * 70)
 
 
-import_cves()
+if __name__ == '__main__':
+    import_cves()
