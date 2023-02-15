@@ -76,6 +76,21 @@ def apply_cppcheck(file_or_dir, xmlfile="output.xml"):
     return df
 
 
+def apply_flawfinder(file_or_dir):
+    """find flaws in the file using CppCheck tool"""
+    if os.path.isfile(file_or_dir):
+        cmd = "flawfinder --csv " + file_or_dir
+    elif os.path.isdir(file_or_dir):
+        cmd = "flawfinder --csv --inputs " + file_or_dir
+    else:
+        print("Please provide a valid project dir/file/link!")
+
+    process = sub.Popen(cmd, shell=True, stdout=sub.PIPE)
+    output = process.stdout.read()
+    df = pd.read_csv(StringIO(str(output, "utf-8")))
+    return df.reset_index(drop=True)
+
+
 if __name__ == "__main__":
     chk_dir = "data/projects/contiki-2.4/apps/"
     df_flaw = apply_cppcheck(chk_dir)
