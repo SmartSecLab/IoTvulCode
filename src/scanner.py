@@ -92,6 +92,7 @@ def function_metrics(source_file, lines, cwes, tool="cppcheck"):
                 df_fun["is_vul"] = True if cwe else False
 
                 if len(cwe) > 0:
+                    # TODO: in case of Rats tool the 'unknown-vul' is list, make it one item only.
                     # df_fun['cwe'] = 'unknown'  if np.isnan(cwe).all() else str(cwe)
                     df_fun["cwe"] = "unknown" if all(i != i for i in cwe) else str(cwe)
                 else:
@@ -111,7 +112,10 @@ def function_metrics(source_file, lines, cwes, tool="cppcheck"):
         "general_fan_out",
         "top_nesting_level",
     ]
-    df = df.drop(cols_filter, axis=1).drop_duplicates().reset_index(drop=True)
+    df = df.drop_duplicates().reset_index(drop=True)
+
+    if set(cols_filter).issubset(set(list(df.columns))):
+        df = df.drop(cols_filter, axis=1)
     return df
 
 
@@ -186,8 +190,6 @@ def project_flaws(df):
 
         # TODO: check if any of the entries has multiple locations or lines
         # lines = [x[0] if len(x) == 1 else [x[0], x[1]] for x in lines]
-
-        print("lines: ", lines)
         df_file = function_metrics(f, lines, cwes, tool="cppcheck")
         df_prj = pd.concat([df_prj, df_file])
 

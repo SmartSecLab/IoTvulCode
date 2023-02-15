@@ -127,6 +127,9 @@ def apply_rats(file_or_dir, xmlfile="output.xml"):
     # TODO: try not to create output.xml file instead use BytesIO.
     df = xml2df_rats(output)
     # df["line"] = df.line.astype(int)
+
+    df_flaw["cwe"] = "unknown_vul"
+    df_flaw["line"] = df_flaw.line.astype(int)
     return df
 
 
