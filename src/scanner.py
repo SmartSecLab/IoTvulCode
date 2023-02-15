@@ -25,8 +25,7 @@ from guesslang import Guess
 # add parent dir to access modules
 # sys.path.append("../")
 
-from src.flawfinder import apply_flawfinder
-from src.cppcheck import xml2df, apply_cppcheck
+from src.tools import apply_flawfinder, apply_cppcheck
 
 pl_list = ["C", "C++"]
 
@@ -148,22 +147,6 @@ def merge_flawfinder_cppcheck(df_ff, df_cc):
     return pd.concat([df_ff, df_cc])
 
 
-def check_internet(url):
-    response = requests.get(url)
-    return True if response.status_code < 400 else False
-
-
-def retrieve_zip(url):
-    """Fetching list of C/C++ files from zip file of the project url."""
-    if check_internet(url):
-        r = requests.get(url)
-        # BytesIO keeps the file in memory
-        return ZipFile(BytesIO(r.content))
-    else:
-        print("Internet is not working!")
-        return None
-
-
 # # TBD: Function Under Construction:
 # def srcML_funs(file):
 #     """find function blocks of the given file using srcML"""
@@ -234,6 +217,7 @@ def file2df(file, zip_obj=None):
         fp.seek(0)  # move reader's head to the initial point of the file.
         file_name = fp.name
         df_flaw = apply_flawfinder(file_or_dir=file_name)
+        print(df_flaw)
 
         df_metrics = function_metrics(source_file=file_name, df_flaw=df_flaw)
         print(f"Shape of the found flaws data of the file: {df_flaw.shape}")
@@ -245,6 +229,22 @@ def file2df(file, zip_obj=None):
     finally:
         fp.close()
     return df_flaw, df_metrics
+
+
+def check_internet(url):
+    response = requests.get(url)
+    return True if response.status_code < 400 else False
+
+
+def retrieve_zip(url):
+    """Fetching list of C/C++ files from zip file of the project url."""
+    if check_internet(url):
+        r = requests.get(url)
+        # BytesIO keeps the file in memory
+        return ZipFile(BytesIO(r.content))
+    else:
+        print("Internet is not working!")
+        return None
 
 
 def urlzip2df(url):
