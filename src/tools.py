@@ -46,10 +46,13 @@ def xml2df_cppcheck(file):
         for errors in xtree.findall(".//errors"):
             for err in errors.findall("error"):
                 dt_err = err.attrib
+
+                ## get location of the vulnerable line content
                 dt_err.update(fetch_location(err))
                 df = pd.concat([df, pd.DataFrame([dt_err])], ignore_index=True).drop(
                     columns=["file"], axis=1
                 )
+
         return df.rename(columns={"file0": "file"})
     else:
         return None
@@ -60,7 +63,7 @@ def apply_cppcheck(file_or_dir, xmlfile="output.xml"):
     example commands:
     !cppcheck --template=gcc ../data/projects/contiki-2.4/apps/ 2> err.txt
     !cppcheck --template="{file}; {line}; {severity}; {message}; {code}"
-    --template-location=" {file};{line}; {info};{code}\n" ../data/projects/contiki-2.4/apps/ 2> err.txt
+    --template-location=" {file};{line}; {info};{code}\n" <path> 2> err.txt
     """
     cmd = ["cppcheck " + file_or_dir + " --xml 2> + " + xmlfile]
     process = sub.Popen(cmd, shell=True, stdout=sub.PIPE)
@@ -81,10 +84,14 @@ def apply_flawfinder(file_or_dir):
         cmd = "flawfinder --csv --inputs " + file_or_dir
     else:
         print("Please provide a valid project dir/file/link!")
-
-    process = sub.Popen(cmd, shell=True, stdout=sub.PIPE)
-    output = process.stdout.read()
-    df = pd.read_csv(StringIO(str(output, "utf-8")))
+    print(cmd)
+    process = sub.Popen(
+        cmd,
+        shell=True,
+        stdout=sub.PIPE,
+    )
+    output = process.stdout.read().decode("utf-8")
+    df = pd.read_csv(StringIO(output))
     return df.reset_index(drop=True)
 
 
@@ -114,22 +121,21 @@ def xml2df_rats(xml):
 
 
 def apply_rats(file_or_dir, xmlfile="output.xml"):
-    """find flaws in the file using CppCheck tool
-    example commands:
-    !cppcheck --template=gcc ../data/projects/contiki-2.4/apps/ 2> err.txt
-    !cppcheck --template="{file}; {line}; {severity}; {message}; {code}"
-    --template-location=" {file};{line}; {info};{code}\n" ../data/projects/contiki-2.4/apps/ 2> err.txt
+    """ The Rough Auditing Tool for Security is an open-source tool 
+    developed by Secure Software Engineers
+    https://security.web.cern.ch/recommendations/en/codetools/rats.shtml \
+    For example: 
+    `rats --quiet --xml -w 3 data/projects/contiki-2.4/apps/` 
     """
     # rats --quiet --xml -w 3 <dir_or_file>
     cmd = ["rats --quiet --xml -w 3 " + file_or_dir]
     process = sub.Popen(cmd, shell=True, stdout=sub.PIPE)
     output = process.stdout.read().decode("utf-8")
-    # TODO: try not to create output.xml file instead use BytesIO.
     df = xml2df_rats(output)
-    # df["line"] = df.line.astype(int)
 
-    df_flaw["cwe"] = "unknown_vul"
-    df_flaw["line"] = df_flaw.line.astype(int)
+    # RATS tool does not produce results with CWE type.
+    df["cwe"] = "unknown_vul"
+    df["line"] = df.line.astype(int)
     return df
 
 
