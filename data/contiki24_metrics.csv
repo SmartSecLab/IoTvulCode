@@ -1,5 +1,1733 @@
-,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,filename,top_nesting_level,code,CWEs,is_vul
-0,1,7,30,mac_ethernetSetup,mac_ethernetSetup( void),204,217,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,"mac_ethernetSetup( void)    ETHBUF(raw_buf)->dest.addr[3] = UIP_IP_BUF->destipaddr.u8[13];
+,cyclomatic_complexity,nloc,token_count,name,long_name,start_line,end_line,filename,code,fun_name,content,is_vul,cwe
+0,3,13,97,PT_THREAD,PT_THREAD( send_file(struct httpd_state*s)),70,87,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_4pq_l7ax_Flawfinder,"PT_THREAD( send_file(struct httpd_state*s)){
+  PSOCK_BEGIN(&s->sout);
+  
+  do {
+    /* Read data from file system into buffer */
+    s->len = cfs_read(s->fd, s->outputbuf, sizeof(s->outputbuf));
+
+    /* If there is data in the buffer, send it */
+    if(s->len > 0) {
+      PSOCK_SEND(&s->sout, (uint8_t *)s->outputbuf, s->len);
+    } else {
+      break;
+    }
+  } while(s->len > 0);
+      
+  PSOCK_END(&s->sout);
+}
+",PT_THREAD,,True,unknown_vul
+1,1,6,43,PT_THREAD,"PT_THREAD( send_string(struct httpd_state*s,const char*str))",90,97,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_4pq_l7ax_Flawfinder,"PT_THREAD( send_string(struct httpd_state*s,const char*str)){
+  PSOCK_BEGIN(&s->sout);
+
+  SEND_STRING(&s->sout, str);
+
+  PSOCK_END(&s->sout);
+}
+",PT_THREAD,,False,benign
+2,6,21,193,PT_THREAD,"PT_THREAD( send_headers(struct httpd_state*s,const char*statushdr))",100,123,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_4pq_l7ax_Flawfinder,"PT_THREAD( send_headers(struct httpd_state*s,const char*statushdr)){
+  char *ptr;
+
+  PSOCK_BEGIN(&s->sout);
+
+  SEND_STRING(&s->sout, statushdr);
+
+  ptr = strrchr(s->filename, ISO_period);
+  if(ptr == NULL) {
+    SEND_STRING(&s->sout, http_content_type_plain);
+  } else if(strncmp(http_html, ptr, 5) == 0) {
+    SEND_STRING(&s->sout, http_content_type_html);
+  } else if(strncmp(http_css, ptr, 4) == 0) {
+    SEND_STRING(&s->sout, http_content_type_css);
+  } else if(strncmp(http_png, ptr, 4) == 0) {
+    SEND_STRING(&s->sout, http_content_type_png);
+  } else if(strncmp(http_jpg, ptr, 4) == 0) {
+    SEND_STRING(&s->sout, http_content_type_jpg);
+  } else {
+    SEND_STRING(&s->sout, http_content_type_binary);
+  }
+  PSOCK_END(&s->sout);
+}
+",PT_THREAD,,True,"[nan, 'CWE-788']"
+3,3,32,255,PT_THREAD,PT_THREAD( handle_output(struct httpd_state*s)),126,158,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_4pq_l7ax_Flawfinder,"PT_THREAD( handle_output(struct httpd_state*s)){
+  PT_BEGIN(&s->outputpt);
+
+  petsciiconv_topetscii(s->filename, sizeof(s->filename));
+  s->fd = cfs_open(s->filename, CFS_READ);
+  petsciiconv_toascii(s->filename, sizeof(s->filename));
+  if(s->fd < 0) {
+    strcpy(s->filename, ""notfound.html"");
+    s->fd = cfs_open(s->filename, CFS_READ);
+    petsciiconv_toascii(s->filename, sizeof(s->filename));
+    if(s->fd < 0) {
+      PT_WAIT_THREAD(&s->outputpt,
+                     send_headers(s, http_header_404));
+      PT_WAIT_THREAD(&s->outputpt,
+                     send_string(s, ""not found""));
+      uip_close();
+      webserver_log_file(&uip_conn->ripaddr, ""404 (no notfound.html)"");
+      PT_EXIT(&s->outputpt);
+    }
+    PT_WAIT_THREAD(&s->outputpt,
+		   send_headers(s, http_header_404));
+    webserver_log_file(&uip_conn->ripaddr, ""404 - notfound.html"");
+  } else {
+    PT_WAIT_THREAD(&s->outputpt,
+		   send_headers(s, http_header_200));
+  }
+  PT_WAIT_THREAD(&s->outputpt, send_file(s));
+  cfs_close(s->fd);
+  s->fd = -1;
+  PSOCK_CLOSE(&s->sout);
+  PT_END(&s->outputpt);
+}
+",PT_THREAD,,True,"[nan, 'CWE-120']"
+4,6,31,289,PT_THREAD,PT_THREAD( handle_input(struct httpd_state*s)),161,199,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_4pq_l7ax_Flawfinder,"PT_THREAD( handle_input(struct httpd_state*s)){
+  PSOCK_BEGIN(&s->sin);
+
+  PSOCK_READTO(&s->sin, ISO_space);
+  
+  if(strncmp(s->inputbuf, http_get, 4) != 0) {
+    PSOCK_CLOSE_EXIT(&s->sin);
+  }
+  PSOCK_READTO(&s->sin, ISO_space);
+
+  if(s->inputbuf[0] != ISO_slash) {
+    PSOCK_CLOSE_EXIT(&s->sin);
+  }
+
+  if(s->inputbuf[1] == ISO_space) {
+    strncpy(s->filename, &http_index_html[1], sizeof(s->filename));
+  } else {
+    s->inputbuf[PSOCK_DATALEN(&s->sin) - 1] = 0;
+    strncpy(s->filename, &s->inputbuf[1], sizeof(s->filename));
+  }
+
+  petsciiconv_topetscii(s->filename, sizeof(s->filename));
+  webserver_log_file(&uip_conn->ripaddr, s->filename);
+  petsciiconv_toascii(s->filename, sizeof(s->filename));
+  s->state = STATE_OUTPUT;
+
+  while(1) {
+    PSOCK_READTO(&s->sin, ISO_nl);
+
+    if(strncmp(s->inputbuf, http_referer, 8) == 0) {
+      s->inputbuf[PSOCK_DATALEN(&s->sin) - 2] = 0;
+      petsciiconv_topetscii(s->inputbuf, PSOCK_DATALEN(&s->sin) - 2);
+      webserver_log(s->inputbuf);
+    }
+  }
+  
+  PSOCK_END(&s->sin);
+}
+",PT_THREAD,,True,"[nan, 'CWE-120']"
+5,2,7,29,handle_connection,handle_connection( struct httpd_state * s),202,208,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_4pq_l7ax_Flawfinder,"handle_connection( struct httpd_state * s){
+  handle_input(s);
+  if(s->state == STATE_OUTPUT) {
+    handle_output(s);
+  }
+}
+",handle_connection,,False,benign
+6,12,45,315,httpd_appcall,httpd_appcall( void * state),211,256,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_4pq_l7ax_Flawfinder,"httpd_appcall( void * state){
+  struct httpd_state *s = (struct httpd_state *)state;
+
+  if(uip_closed() || uip_aborted() || uip_timedout()) {
+    if(s != NULL) {
+      if(s->fd >= 0) {
+        cfs_close(s->fd);
+	s->fd = -1;
+      }
+      memb_free(&conns, s);
+    }
+  } else if(uip_connected()) {
+    s = (struct httpd_state *)memb_alloc(&conns);
+    if(s == NULL) {
+      uip_abort();
+      webserver_log_file(&uip_conn->ripaddr, ""reset (no memory block)"");
+      return;
+    }
+    tcp_markconn(uip_conn, s);
+    PSOCK_INIT(&s->sin, (uint8_t *)s->inputbuf, sizeof(s->inputbuf) - 1);
+    PSOCK_INIT(&s->sout, (uint8_t *)s->inputbuf, sizeof(s->inputbuf) - 1);
+    PT_INIT(&s->outputpt);
+    s->fd = -1;
+    s->state = STATE_WAITING;
+    timer_set(&s->timer, CLOCK_SECOND * 10);
+    handle_connection(s);
+  } else if(s != NULL) {
+    if(uip_poll()) {
+      if(timer_expired(&s->timer)) {
+	uip_abort();
+	if(s->fd >= 0) {
+	  cfs_close(s->fd);
+	  s->fd = -1;
+	}
+        memb_free(&conns, s);
+        webserver_log_file(&uip_conn->ripaddr, ""reset (timeout)"");
+      }
+    } else {
+      timer_restart(&s->timer);
+    }
+    handle_connection(s);
+  } else {
+    uip_abort();
+  }
+}
+",httpd_appcall,,True,unknown_vul
+7,1,5,20,httpd_init,httpd_init( void),259,263,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_4pq_l7ax_Flawfinder,"httpd_init( void){
+  tcp_listen(HTONS(80));
+  memb_init(&conns);
+}
+",httpd_init,,False,benign
+8,2,10,40,PROCESS_THREAD,"PROCESS_THREAD( webserver_nogui_process , ev , data)",51,63,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_ze9fwbzj_Flawfinder,"PROCESS_THREAD( webserver_nogui_process , ev , data){
+  PROCESS_BEGIN();
+
+  httpd_init();
+
+  while(1) {
+    PROCESS_WAIT_EVENT_UNTIL(ev == tcpip_event);
+    httpd_appcall(data);
+  }
+  
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,unknown_vul
+9,2,10,40,PROCESS_THREAD,"PROCESS_THREAD( webserver_nogui_process , ev , data)",51,63,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_ze9fwbzj_Flawfinder,"PROCESS_THREAD( webserver_nogui_process , ev , data){
+  PROCESS_BEGIN();
+
+  httpd_init();
+
+  while(1) {
+    PROCESS_WAIT_EVENT_UNTIL(ev == tcpip_event);
+    httpd_appcall(data);
+  }
+  
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,unknown_vul
+10,2,10,40,PROCESS_THREAD,"PROCESS_THREAD( webserver_nogui_process , ev , data)",51,63,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_ze9fwbzj_Flawfinder,"PROCESS_THREAD( webserver_nogui_process , ev , data){
+  PROCESS_BEGIN();
+
+  httpd_init();
+
+  while(1) {
+    PROCESS_WAIT_EVENT_UNTIL(ev == tcpip_event);
+    httpd_appcall(data);
+  }
+  
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,unknown_vul
+11,3,11,107,webserver_log_file,"webserver_log_file( uip_ipaddr_t * requester , char * file)",66,84,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_ze9fwbzj_Flawfinder,"webserver_log_file( uip_ipaddr_t * requester , char * file){
+#if LOG_CONF_ENABLED
+  /* Print out IP address of requesting host. */
+
+#if UIP_CONF_IPV6
+  char buf[48];
+  uint8_t j;
+  j=httpd_sprint_ip6((uip_ip6addr_t)*requester, buf);
+  buf[j]=':';buf[j+1]=' ';buf[j+2]=0;
+#else
+  char buf[20];
+  sprintf(buf, ""%d.%d.%d.%d: "", requester->u8[0], requester->u8[1],
+                                requester->u8[2], requester->u8[3]);
+#endif /* UIP_CONF_IPV6 */
+
+  log_message(buf, file);
+#endif /* LOG_CONF_ENABLED */
+}
+",webserver_log_file,,True,"[nan, 'CWE-119!/CWE-120', 'CWE-120']"
+12,3,11,107,webserver_log_file,"webserver_log_file( uip_ipaddr_t * requester , char * file)",66,84,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_ze9fwbzj_Flawfinder,"webserver_log_file( uip_ipaddr_t * requester , char * file){
+#if LOG_CONF_ENABLED
+  /* Print out IP address of requesting host. */
+
+#if UIP_CONF_IPV6
+  char buf[48];
+  uint8_t j;
+  j=httpd_sprint_ip6((uip_ip6addr_t)*requester, buf);
+  buf[j]=':';buf[j+1]=' ';buf[j+2]=0;
+#else
+  char buf[20];
+  sprintf(buf, ""%d.%d.%d.%d: "", requester->u8[0], requester->u8[1],
+                                requester->u8[2], requester->u8[3]);
+#endif /* UIP_CONF_IPV6 */
+
+  log_message(buf, file);
+#endif /* LOG_CONF_ENABLED */
+}
+",webserver_log_file,,True,"[nan, 'CWE-119!/CWE-120', 'CWE-120']"
+13,1,4,15,webserver_log,webserver_log( char * msg),87,90,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_ze9fwbzj_Flawfinder,"webserver_log( char * msg){
+  log_message(msg, """");
+}
+",webserver_log,,False,benign
+14,2,11,75,generate,generate( void * state),71,83,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"generate( void * state){
+  struct httpd_state *s = (struct httpd_state *)state;
+
+  if(s->file.len > uip_mss()) {
+    s->len = uip_mss();
+  } else {
+    s->len = s->file.len;
+  }
+  memcpy(uip_appdata, s->file.data, s->len);
+  
+  return s->len;
+}
+",generate,,True,"[nan, 'CWE-120']"
+15,2,10,74,PT_THREAD,PT_THREAD( send_file(struct httpd_state*s)),86,97,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"PT_THREAD( send_file(struct httpd_state*s)){
+  PSOCK_BEGIN(&s->sout);
+  
+  do {
+    PSOCK_GENERATOR_SEND(&s->sout, generate, s);
+    s->file.len -= s->len;
+    s->file.data += s->len;
+  } while(s->file.len > 0);
+      
+  PSOCK_END(&s->sout);
+}
+",PT_THREAD,,False,benign
+16,1,6,50,PT_THREAD,PT_THREAD( send_part_of_file(struct httpd_state*s)),100,107,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"PT_THREAD( send_part_of_file(struct httpd_state*s)){
+  PSOCK_BEGIN(&s->sout);
+
+  PSOCK_SEND(&s->sout, (uint8_t *)s->file.data, s->len);
+  
+  PSOCK_END(&s->sout);
+}
+",PT_THREAD,,False,benign
+17,2,11,67,next_scriptstate,next_scriptstate( struct httpd_state * s),110,125,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"next_scriptstate( struct httpd_state * s){
+  char *p;
+
+  if((p = strchr(s->scriptptr, ISO_nl)) != NULL) {
+    p += 1;
+    s->scriptlen -= (unsigned short)(p - s->scriptptr);
+    s->scriptptr = p;
+  } else {
+    s->scriptlen = 0;
+  }
+  /*  char *p;
+  p = strchr(s->scriptptr, ISO_nl) + 1;
+  s->scriptlen -= (unsigned short)(p - s->scriptptr);
+  s->scriptptr = p;*/
+}
+",next_scriptstate,,True,unknown_vul
+18,10,44,354,PT_THREAD,PT_THREAD( handle_script(struct httpd_state*s)),128,183,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"PT_THREAD( handle_script(struct httpd_state*s)){
+  char *ptr;
+  
+  PT_BEGIN(&s->scriptpt);
+
+  while(s->file.len > 0) {
+
+    /* Check if we should start executing a script. */
+    if(*s->file.data == ISO_percent &&
+       *(s->file.data + 1) == ISO_bang) {
+      s->scriptptr = s->file.data + 3;
+      s->scriptlen = s->file.len - 3;
+      if(*(s->scriptptr - 1) == ISO_colon) {
+	httpd_fs_open(s->scriptptr + 1, &s->file);
+	PT_WAIT_THREAD(&s->scriptpt, send_file(s));
+      } else {
+	PT_WAIT_THREAD(&s->scriptpt,
+		       httpd_cgi(s->scriptptr)(s, s->scriptptr));
+      }
+      next_scriptstate(s);
+      
+      /* The script is over, so we reset the pointers and continue
+	 sending the rest of the file. */
+      s->file.data = s->scriptptr;
+      s->file.len = s->scriptlen;
+    } else {
+      /* See if we find the start of script marker in the block of HTML
+	 to be sent. */
+
+      if(s->file.len > uip_mss()) {
+	s->len = uip_mss();
+      } else {
+	s->len = s->file.len;
+      }
+
+      if(*s->file.data == ISO_percent) {
+	ptr = strchr(s->file.data + 1, ISO_percent);
+      } else {
+	ptr = strchr(s->file.data, ISO_percent);
+      }
+      if(ptr != NULL &&
+	 ptr != s->file.data) {
+	s->len = (int)(ptr - s->file.data);
+	if(s->len >= uip_mss()) {
+	  s->len = uip_mss();
+	}
+      }
+      PT_WAIT_THREAD(&s->scriptpt, send_part_of_file(s));
+      s->file.data += s->len;
+      s->file.len -= s->len;
+    }
+  }
+  
+  PT_END(&s->scriptpt);
+}
+",PT_THREAD,,True,unknown_vul
+19,8,24,230,PT_THREAD,"PT_THREAD( send_headers(struct httpd_state*s,const char*statushdr))",186,212,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"PT_THREAD( send_headers(struct httpd_state*s,const char*statushdr)){
+  char *ptr;
+
+  PSOCK_BEGIN(&s->sout);
+
+  SEND_STRING(&s->sout, statushdr);
+
+  ptr = strrchr(s->filename, ISO_period);
+  if(ptr == NULL) {
+    SEND_STRING(&s->sout, http_content_type_binary);
+  } else if(strncmp(http_html, ptr, 5) == 0 ||
+	    strncmp(http_shtml, ptr, 6) == 0) {
+    SEND_STRING(&s->sout, http_content_type_html);
+  } else if(strncmp(http_css, ptr, 4) == 0) {
+    SEND_STRING(&s->sout, http_content_type_css);
+  } else if(strncmp(http_png, ptr, 4) == 0) {
+    SEND_STRING(&s->sout, http_content_type_png);
+  } else if(strncmp(http_gif, ptr, 4) == 0) {
+    SEND_STRING(&s->sout, http_content_type_gif);
+  } else if(strncmp(http_jpg, ptr, 4) == 0) {
+    SEND_STRING(&s->sout, http_content_type_jpg);
+  } else {
+    SEND_STRING(&s->sout, http_content_type_plain);
+  }
+  PSOCK_END(&s->sout);
+}
+",PT_THREAD,,False,benign
+20,4,27,180,PT_THREAD,PT_THREAD( handle_output(struct httpd_state*s)),215,243,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"PT_THREAD( handle_output(struct httpd_state*s)){
+  char *ptr;
+  
+  PT_BEGIN(&s->outputpt);
+ 
+  if(!httpd_fs_open(s->filename, &s->file)) {
+    httpd_fs_open(http_404_html, &s->file);
+    PT_WAIT_THREAD(&s->outputpt,
+		   send_headers(s,
+		   http_header_404));
+    PT_WAIT_THREAD(&s->outputpt,
+		   send_file(s));
+  } else {
+    PT_WAIT_THREAD(&s->outputpt,
+		   send_headers(s,
+		   http_header_200));
+    ptr = strchr(s->filename, ISO_period);
+    if(ptr != NULL && strncmp(ptr, http_shtml, 6) == 0) {
+      PT_INIT(&s->scriptpt);
+      PT_WAIT_THREAD(&s->outputpt, handle_script(s));
+    } else {
+      PT_WAIT_THREAD(&s->outputpt,
+		     send_file(s));
+    }
+  }
+  PSOCK_CLOSE(&s->sout);
+  PT_END(&s->outputpt);
+}
+",PT_THREAD,,False,benign
+21,6,29,257,PT_THREAD,PT_THREAD( handle_input(struct httpd_state*s)),246,283,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"PT_THREAD( handle_input(struct httpd_state*s)){
+  PSOCK_BEGIN(&s->sin);
+
+  PSOCK_READTO(&s->sin, ISO_space);
+  
+  if(strncmp(s->inputbuf, http_get, 4) != 0) {
+    PSOCK_CLOSE_EXIT(&s->sin);
+  }
+  PSOCK_READTO(&s->sin, ISO_space);
+
+  if(s->inputbuf[0] != ISO_slash) {
+    PSOCK_CLOSE_EXIT(&s->sin);
+  }
+
+  if(s->inputbuf[1] == ISO_space) {
+    strncpy(s->filename, http_index_html, sizeof(s->filename));
+  } else {
+    s->inputbuf[PSOCK_DATALEN(&s->sin) - 1] = 0;
+    strncpy(s->filename, &s->inputbuf[0], sizeof(s->filename));
+  }
+
+  webserver_log_file(&uip_conn->ripaddr, s->filename);
+  
+  s->state = STATE_OUTPUT;
+
+  while(1) {
+    PSOCK_READTO(&s->sin, ISO_nl);
+
+    if(strncmp(s->inputbuf, http_referer, 8) == 0) {
+      s->inputbuf[PSOCK_DATALEN(&s->sin) - 2] = 0;
+      petsciiconv_topetscii(s->inputbuf, PSOCK_DATALEN(&s->sin) - 2);
+      webserver_log(s->inputbuf);
+    }
+  }
+  
+  PSOCK_END(&s->sin);
+}
+",PT_THREAD,,True,"[nan, 'CWE-120']"
+22,2,7,29,handle_connection,handle_connection( struct httpd_state * s),286,292,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"handle_connection( struct httpd_state * s){
+  handle_input(s);
+  if(s->state == STATE_OUTPUT) {
+    handle_output(s);
+  }
+}
+",handle_connection,,True,['CWE-685']
+23,10,35,235,httpd_appcall,httpd_appcall( void * state),295,331,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"httpd_appcall( void * state){
+  struct httpd_state *s = (struct httpd_state *)state;
+
+  if(uip_closed() || uip_aborted() || uip_timedout()) {
+    if(s != NULL) {
+      memb_free(&conns, s);
+    }
+  } else if(uip_connected()) {
+    s = (struct httpd_state *)memb_alloc(&conns);
+    if(s == NULL) {
+      uip_abort();
+      return;
+    }
+    tcp_markconn(uip_conn, s);
+    PSOCK_INIT(&s->sin, (uint8_t *)s->inputbuf, sizeof(s->inputbuf) - 1);
+    PSOCK_INIT(&s->sout, (uint8_t *)s->inputbuf, sizeof(s->inputbuf) - 1);
+    PT_INIT(&s->outputpt);
+    s->state = STATE_WAITING;
+    /*    timer_set(&s->timer, CLOCK_SECOND * 100);*/
+    s->timer = 0;
+    handle_connection(s);
+  } else if(s != NULL) {
+    if(uip_poll()) {
+      ++s->timer;
+      if(s->timer >= 20) {
+	uip_abort();
+	memb_free(&conns, s);
+      }
+    } else {
+      s->timer = 0;
+    }
+    handle_connection(s);
+  } else {
+    uip_abort();
+  }
+}
+",httpd_appcall,,False,benign
+24,1,6,24,httpd_init,httpd_init( void),334,339,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"httpd_init( void){
+  tcp_listen(HTONS(80));
+  memb_init(&conns);
+  httpd_cgi_init();
+}
+",httpd_init,,False,benign
+25,7,28,177,httpd_sprint_ip6,"httpd_sprint_ip6( uip_ip6addr_t addr , char * result)",343,371,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"httpd_sprint_ip6( uip_ip6addr_t addr , char * result){
+  unsigned char i = 0;
+  unsigned char zerocnt = 0;
+  unsigned char numprinted = 0;
+  char * starting = result;
+
+  *result++='[';
+  while (numprinted < 8) {
+    if ((addr.u16[i] == 0) && (zerocnt == 0)) {
+      while(addr.u16[zerocnt + i] == 0) zerocnt++;
+      if (zerocnt == 1) {
+        *result++ = '0';
+         numprinted++;
+         break;
+      }
+      i += zerocnt;
+      numprinted += zerocnt;
+    } else {
+      result += sprintf(result, ""%x"", (unsigned int)(ntohs(addr.u16[i])));
+      i++;
+      numprinted++;
+    }
+    if (numprinted != 8) *result++ = ':';
+  }
+  *result++=']';
+  *result=0;
+  return (result - starting);
+}
+",httpd_sprint_ip6,,True,['CWE-120']
+26,7,28,177,httpd_sprint_ip6,"httpd_sprint_ip6( uip_ip6addr_t addr , char * result)",343,371,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_75agzp7u_Flawfinder,"httpd_sprint_ip6( uip_ip6addr_t addr , char * result){
+  unsigned char i = 0;
+  unsigned char zerocnt = 0;
+  unsigned char numprinted = 0;
+  char * starting = result;
+
+  *result++='[';
+  while (numprinted < 8) {
+    if ((addr.u16[i] == 0) && (zerocnt == 0)) {
+      while(addr.u16[zerocnt + i] == 0) zerocnt++;
+      if (zerocnt == 1) {
+        *result++ = '0';
+         numprinted++;
+         break;
+      }
+      i += zerocnt;
+      numprinted += zerocnt;
+    } else {
+      result += sprintf(result, ""%x"", (unsigned int)(ntohs(addr.u16[i])));
+      i++;
+      numprinted++;
+    }
+    if (numprinted != 8) *result++ = ':';
+  }
+  *result++=']';
+  *result=0;
+  return (result - starting);
+}
+",httpd_sprint_ip6,,True,['CWE-120']
+27,5,21,112,PROCESS_THREAD,"PROCESS_THREAD( webserver_process , ev , data)",63,90,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_x8h3altd_Flawfinder,"PROCESS_THREAD( webserver_process , ev , data){
+  PROCESS_BEGIN();
+  
+  ctk_window_new(&mainwindow, LOG_WIDTH, LOG_HEIGHT+1, ""Web server"");
+  
+  CTK_WIDGET_ADD(&mainwindow, &message);
+  CTK_WIDGET_ADD(&mainwindow, &loglabel);
+  
+  httpd_init();
+  
+  ctk_window_open(&mainwindow);
+
+  while(1) {
+    PROCESS_WAIT_EVENT();
+
+    if(ev == ctk_signal_window_close ||
+       ev == PROCESS_EVENT_EXIT) {
+      ctk_window_close(&mainwindow);
+      process_exit(&webserver_process);
+      LOADER_UNLOAD();    
+    } else if(ev == tcpip_event) {
+      httpd_appcall(data);
+    }
+  }
+
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,unknown_vul
+28,5,21,112,PROCESS_THREAD,"PROCESS_THREAD( webserver_process , ev , data)",63,90,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_x8h3altd_Flawfinder,"PROCESS_THREAD( webserver_process , ev , data){
+  PROCESS_BEGIN();
+  
+  ctk_window_new(&mainwindow, LOG_WIDTH, LOG_HEIGHT+1, ""Web server"");
+  
+  CTK_WIDGET_ADD(&mainwindow, &message);
+  CTK_WIDGET_ADD(&mainwindow, &loglabel);
+  
+  httpd_init();
+  
+  ctk_window_open(&mainwindow);
+
+  while(1) {
+    PROCESS_WAIT_EVENT();
+
+    if(ev == ctk_signal_window_close ||
+       ev == PROCESS_EVENT_EXIT) {
+      ctk_window_close(&mainwindow);
+      process_exit(&webserver_process);
+      LOADER_UNLOAD();    
+    } else if(ev == tcpip_event) {
+      httpd_appcall(data);
+    }
+  }
+
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,unknown_vul
+29,5,21,112,PROCESS_THREAD,"PROCESS_THREAD( webserver_process , ev , data)",63,90,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_x8h3altd_Flawfinder,"PROCESS_THREAD( webserver_process , ev , data){
+  PROCESS_BEGIN();
+  
+  ctk_window_new(&mainwindow, LOG_WIDTH, LOG_HEIGHT+1, ""Web server"");
+  
+  CTK_WIDGET_ADD(&mainwindow, &message);
+  CTK_WIDGET_ADD(&mainwindow, &loglabel);
+  
+  httpd_init();
+  
+  ctk_window_open(&mainwindow);
+
+  while(1) {
+    PROCESS_WAIT_EVENT();
+
+    if(ev == ctk_signal_window_close ||
+       ev == PROCESS_EVENT_EXIT) {
+      ctk_window_close(&mainwindow);
+      process_exit(&webserver_process);
+      LOADER_UNLOAD();    
+    } else if(ev == tcpip_event) {
+      httpd_appcall(data);
+    }
+  }
+
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,unknown_vul
+30,1,13,110,webserver_log_file,"webserver_log_file( uip_ipaddr_t * requester , char * file)",93,113,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_x8h3altd_Flawfinder,"webserver_log_file( uip_ipaddr_t * requester , char * file){
+  int size;
+  
+  /* Scroll previous entries upwards */
+  memcpy(log, &log[LOG_WIDTH], LOG_WIDTH * (LOG_HEIGHT - 1));
+
+  /* Print out IP address of requesting host. */
+  size = sprintf(&log[LOG_WIDTH * (LOG_HEIGHT - 1)],
+		 ""%d.%d.%d.%d: "",
+		 requester->u8[0],
+		 requester->u8[1],
+		 requester->u8[2],
+		 requester->u8[3]);
+  
+  /* Copy filename into last line. */		 
+  strncpy(&log[LOG_WIDTH * (LOG_HEIGHT - 1) + size], file, LOG_WIDTH - size);
+	   
+  /* Update log display. */
+  CTK_WIDGET_REDRAW(&loglabel);
+}
+",webserver_log_file,,True,"[nan, 'CWE-788', 'CWE-120']"
+31,1,13,110,webserver_log_file,"webserver_log_file( uip_ipaddr_t * requester , char * file)",93,113,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_x8h3altd_Flawfinder,"webserver_log_file( uip_ipaddr_t * requester , char * file){
+  int size;
+  
+  /* Scroll previous entries upwards */
+  memcpy(log, &log[LOG_WIDTH], LOG_WIDTH * (LOG_HEIGHT - 1));
+
+  /* Print out IP address of requesting host. */
+  size = sprintf(&log[LOG_WIDTH * (LOG_HEIGHT - 1)],
+		 ""%d.%d.%d.%d: "",
+		 requester->u8[0],
+		 requester->u8[1],
+		 requester->u8[2],
+		 requester->u8[3]);
+  
+  /* Copy filename into last line. */		 
+  strncpy(&log[LOG_WIDTH * (LOG_HEIGHT - 1) + size], file, LOG_WIDTH - size);
+	   
+  /* Update log display. */
+  CTK_WIDGET_REDRAW(&loglabel);
+}
+",webserver_log_file,,True,"[nan, 'CWE-788', 'CWE-120']"
+32,1,6,52,webserver_log,webserver_log( char * msg),116,126,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_x8h3altd_Flawfinder,"webserver_log( char * msg){
+  /* Scroll previous entries upwards */
+  memcpy(log, &log[LOG_WIDTH], LOG_WIDTH * (LOG_HEIGHT - 1));
+
+  /* Copy filename into last line. */		 
+  strncpy(&log[LOG_WIDTH * (LOG_HEIGHT - 1)], msg, LOG_WIDTH);
+  
+  /* Update log display. */
+  CTK_WIDGET_REDRAW(&loglabel);
+}
+",webserver_log,,True,"[nan, 'CWE-120']"
+33,5,16,74,httpd_fs_strcmp,"httpd_fs_strcmp( const char * str1 , const char * str2)",49,67,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_nqev3dkr_Flawfinder,"httpd_fs_strcmp( const char * str1 , const char * str2){
+  u8_t i;
+  i = 0;
+
+loop:
+  if(str2[i] == 0 ||
+     str1[i] == '\r' || 
+     str1[i] == '\n') {
+    return 0;
+  }
+
+  if(str1[i] != str2[i]) {
+    return 1;
+  }
+
+  ++i;
+  goto loop;
+}
+",httpd_fs_strcmp,,True,unknown_vul
+34,5,16,74,httpd_fs_strcmp,"httpd_fs_strcmp( const char * str1 , const char * str2)",49,67,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_nqev3dkr_Flawfinder,"httpd_fs_strcmp( const char * str1 , const char * str2){
+  u8_t i;
+  i = 0;
+
+loop:
+  if(str2[i] == 0 ||
+     str1[i] == '\r' || 
+     str1[i] == '\n') {
+    return 0;
+  }
+
+  if(str1[i] != str2[i]) {
+    return 1;
+  }
+
+  ++i;
+  goto loop;
+}
+",httpd_fs_strcmp,,True,unknown_vul
+35,6,17,98,httpd_fs_open,"httpd_fs_open( const char * name , struct httpd_fs_file * file)",70,95,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_nqev3dkr_Flawfinder,"httpd_fs_open( const char * name , struct httpd_fs_file * file){
+#if HTTPD_FS_STATISTICS
+  u16_t i = 0;
+#endif /* HTTPD_FS_STATISTICS */
+  struct httpd_fsdata_file_noconst *f;
+
+  for(f = (struct httpd_fsdata_file_noconst *)HTTPD_FS_ROOT;
+      f != NULL;
+      f = (struct httpd_fsdata_file_noconst *)f->next) {
+
+    if(httpd_fs_strcmp(name, f->name) == 0) {
+      file->data = f->data;
+      file->len = f->len;
+#if HTTPD_FS_STATISTICS
+      ++count[i];
+#endif /* HTTPD_FS_STATISTICS */
+      return 1;
+    }
+#if HTTPD_FS_STATISTICS
+    ++i;
+#endif /* HTTPD_FS_STATISTICS */
+
+  }
+  return 0;
+}
+",httpd_fs_open,,True,unknown_vul
+36,6,17,98,httpd_fs_open,"httpd_fs_open( const char * name , struct httpd_fs_file * file)",70,95,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_nqev3dkr_Flawfinder,"httpd_fs_open( const char * name , struct httpd_fs_file * file){
+#if HTTPD_FS_STATISTICS
+  u16_t i = 0;
+#endif /* HTTPD_FS_STATISTICS */
+  struct httpd_fsdata_file_noconst *f;
+
+  for(f = (struct httpd_fsdata_file_noconst *)HTTPD_FS_ROOT;
+      f != NULL;
+      f = (struct httpd_fsdata_file_noconst *)f->next) {
+
+    if(httpd_fs_strcmp(name, f->name) == 0) {
+      file->data = f->data;
+      file->len = f->len;
+#if HTTPD_FS_STATISTICS
+      ++count[i];
+#endif /* HTTPD_FS_STATISTICS */
+      return 1;
+    }
+#if HTTPD_FS_STATISTICS
+    ++i;
+#endif /* HTTPD_FS_STATISTICS */
+
+  }
+  return 0;
+}
+",httpd_fs_open,,True,unknown_vul
+37,3,7,31,httpd_fs_init,httpd_fs_init( void),98,106,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_nqev3dkr_Flawfinder,"httpd_fs_init( void){
+#if HTTPD_FS_STATISTICS
+  u16_t i;
+  for(i = 0; i < HTTPD_FS_NUMFILES; i++) {
+    count[i] = 0;
+  }
+#endif /* HTTPD_FS_STATISTICS */
+}
+",httpd_fs_init,,True,unknown_vul
+38,3,15,75,httpd_fs_count,httpd_fs_count( char * name),110,126,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_nqev3dkr_Flawfinder,"httpd_fs_count( char * name){
+  struct httpd_fsdata_file_noconst *f;
+  u16_t i;
+
+  i = 0;
+  for(f = (struct httpd_fsdata_file_noconst *)HTTPD_FS_ROOT;
+      f != NULL;
+      f = (struct httpd_fsdata_file_noconst *)f->next) {
+
+    if(httpd_fs_strcmp(name, f->name) == 0) {
+      return count[i];
+    }
+    ++i;
+  }
+  return 0;
+}
+",httpd_fs_count,,True,unknown_vul
+39,1,5,32,PT_THREAD,"PT_THREAD( nullfunction(struct httpd_state*s,char*ptr))",117,121,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_skds6dgq_Flawfinder,"PT_THREAD( nullfunction(struct httpd_state*s,char*ptr)){
+  PSOCK_BEGIN(&s->sout);
+  PSOCK_END(&s->sout);
+}
+",PT_THREAD,,True,unknown_vul
+40,3,10,61,httpd_cgi,httpd_cgi( char * name),124,135,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_skds6dgq_Flawfinder,"httpd_cgi( char * name){
+  struct httpd_cgi_call *f;
+
+  /* Find the matching name in the table, return the function. */
+  for(f = calls; f != NULL; f = f->next) {
+    if(strncmp(f->name, name, strlen(f->name)) == 0) {
+      return f->function;
+    }
+  }
+  return nullfunction;
+}
+",httpd_cgi,,True,"[nan, 'CWE-126']"
+41,1,5,39,generate_file_stats,generate_file_stats( void * arg),138,142,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_skds6dgq_Flawfinder,"generate_file_stats( void * arg){
+  char *f = (char *)arg;
+  return snprintf((char *)uip_appdata, uip_mss(), ""%5u"", httpd_fs_count(f));
+}
+",generate_file_stats,,False,benign
+42,1,6,57,PT_THREAD,"PT_THREAD( file_stats(struct httpd_state*s,char*ptr))",145,152,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_skds6dgq_Flawfinder,"PT_THREAD( file_stats(struct httpd_state*s,char*ptr)){
+  PSOCK_BEGIN(&s->sout);
+
+  PSOCK_GENERATOR_SEND(&s->sout, generate_file_stats, (void *) (strchr(ptr, ' ') + 1));
+  
+  PSOCK_END(&s->sout);
+}
+",PT_THREAD,,True,unknown_vul
+43,6,31,228,make_tcp_stats,make_tcp_stats( void * arg),155,189,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_skds6dgq_Flawfinder,"make_tcp_stats( void * arg){
+  struct uip_conn *conn;
+  struct httpd_state *s = (struct httpd_state *)arg;
+  conn = &uip_conns[s->u.count];
+
+  #if UIP_CONF_IPV6
+  char buf[48];
+  httpd_sprint_ip6(conn->ripaddr, buf);
+  return snprintf((char *)uip_appdata, uip_mss(),
+         ""<tr align=\""center\""><td>%d</td><td>%s:%u</td><td>%s</td><td>%u</td><td>%u</td><td>%c %c</td></tr>\r\n"",
+         htons(conn->lport),
+         buf,
+         htons(conn->rport),
+         states[conn->tcpstateflags & UIP_TS_MASK],
+         conn->nrtx,
+         conn->timer,
+         (uip_outstanding(conn))? '*':' ',
+         (uip_stopped(conn))? '!':' ');
+#else
+  return snprintf((char *)uip_appdata, uip_mss(),
+         ""<tr align=\""center\""><td>%d</td><td>%u.%u.%u.%u:%u</td><td>%s</td><td>%u</td><td>%u</td><td>%c %c</td></tr>\r\n"",
+         htons(conn->lport),
+         conn->ripaddr.u8[0],
+         conn->ripaddr.u8[1],
+         conn->ripaddr.u8[2],
+         conn->ripaddr.u8[3],
+         htons(conn->rport),
+         states[conn->tcpstateflags & UIP_TS_MASK],
+         conn->nrtx,
+         conn->timer,
+        (uip_outstanding(conn))? '*':' ',
+        (uip_stopped(conn))? '!':' ');
+#endif /* UIP_CONF_IPV6 */
+}
+",make_tcp_stats,,True,"[nan, 'CWE-119!/CWE-120']"
+44,3,10,92,PT_THREAD,"PT_THREAD( tcp_stats(struct httpd_state*s,char*ptr))",192,204,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_skds6dgq_Flawfinder,"PT_THREAD( tcp_stats(struct httpd_state*s,char*ptr)){
+  
+  PSOCK_BEGIN(&s->sout);
+
+  for(s->u.count = 0; s->u.count < UIP_CONNS; ++s->u.count) {
+    if((uip_conns[s->u.count].tcpstateflags & UIP_TS_MASK) != UIP_CLOSED) {
+      PSOCK_GENERATOR_SEND(&s->sout, make_tcp_stats, s);
+    }
+  }
+
+  PSOCK_END(&s->sout);
+}
+",PT_THREAD,,False,benign
+45,1,11,96,make_processes,make_processes( void * p),207,219,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_skds6dgq_Flawfinder,"make_processes( void * p){
+  char name[40];
+
+  strncpy(name, ((struct process *)p)->name, 40);
+  petsciiconv_toascii(name, 40);
+
+  return snprintf((char *)uip_appdata, uip_mss(),
+		 ""<tr align=\""center\""><td>%p</td><td>%s</td><td>%p</td><td>%s</td></tr>\r\n"",
+		 p, name,
+		 *((char **)&(((struct process *)p)->thread)),
+		 states[9 + ((struct process *)p)->state]);
+}
+",make_processes,,True,"['CWE-119!/CWE-120', 'CWE-120']"
+46,2,8,91,PT_THREAD,"PT_THREAD( processes(struct httpd_state*s,char*ptr))",222,229,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_skds6dgq_Flawfinder,"PT_THREAD( processes(struct httpd_state*s,char*ptr)){
+  PSOCK_BEGIN(&s->sout);
+  for(s->u.ptr = PROCESS_LIST(); s->u.ptr != NULL; s->u.ptr = ((struct process *)s->u.ptr)->next) {
+    PSOCK_GENERATOR_SEND(&s->sout, make_processes, s->u.ptr);
+  }
+  PSOCK_END(&s->sout);
+}
+",PT_THREAD,,False,benign
+47,3,11,60,httpd_cgi_add,httpd_cgi_add( struct httpd_cgi_call * c),232,243,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_skds6dgq_Flawfinder,"httpd_cgi_add( struct httpd_cgi_call * c){
+  struct httpd_cgi_call *l;
+
+  c->next = NULL;
+  if(calls == NULL) {
+    calls = c;
+  } else {
+    for(l = calls; l->next != NULL; l = l->next);
+    l->next = c;
+  }
+}
+",httpd_cgi_add,,False,benign
+48,1,6,24,httpd_cgi_init,httpd_cgi_init( void),251,256,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_skds6dgq_Flawfinder,"httpd_cgi_init( void){
+  httpd_cgi_add(&file);
+  httpd_cgi_add(&tcp);
+  httpd_cgi_add(&proc);
+}
+",httpd_cgi_init,,False,benign
+0,1,7,30,mac_ethernetSetup,mac_ethernetSetup( void),204,217,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_ethernetSetup( void){
+  usbstick_mode.sicslowpan = 1;
+  usbstick_mode.sendToRf = 1;
+  usbstick_mode.translate = 1;
+  usbstick_mode.raw = 1;
+
+/*   sicslowinput = pinput; */
+
+
+/*   pmac = sicslowmac_get_driver();			 */
+/*   pmac->set_receive_function(mac_ethhijack);			   */
+/*   sicslowmac_snifferhook = mac_ethhijack_nondata; */
+}
+",mac_ethernetSetup,,False,benign
+1,15,49,369,mac_ethernetToLowpan,mac_ethernetToLowpan( uint8_t * ethHeader),224,298,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_ethernetToLowpan( uint8_t * ethHeader){
+  //Dest address
+  uip_lladdr_t destAddr;
+  uip_lladdr_t *destAddrPtr = NULL;
+
+  PRINTF(""Packet type: %x\n"", ((struct uip_eth_hdr *) ethHeader)->type);
+
+   //RUM doesn't support sending data
+   #if UIP_CONF_USE_RUM
+   return;
+   #endif
+
+  //If not IPv6 we don't do anything
+  if (((struct uip_eth_hdr *) ethHeader)->type != HTONS(UIP_ETHTYPE_IPV6)) {
+    PRINTF(""eth2low: Packet is not IPv6, dropping\n"");
+/*     rndis_stat.txbad++; */
+    uip_len = 0;
+    return;
+  }
+
+  // In sniffer mode we don't ever send anything
+  if (usbstick_mode.sendToRf == 0) {
+    uip_len = 0;
+    return;
+  }
+
+  /* IPv6 uses 33-33-xx-xx-xx-xx prefix for multicast ND stuff */
+  if ( (((struct uip_eth_hdr *) ethHeader)->dest.addr[0] == 0x33) &&
+       (((struct uip_eth_hdr *) ethHeader)->dest.addr[1] == 0x33) )
+  {
+    PRINTF(""eth2low: Ethernet multicast packet received\n"");
+    ;//Do Nothing
+  } else if ( (((struct uip_eth_hdr *) ethHeader)->dest.addr[0] == 0xFF) &&
+            (((struct uip_eth_hdr *) ethHeader)->dest.addr[1] == 0xFF) &&
+            (((struct uip_eth_hdr *) ethHeader)->dest.addr[2] == 0xFF) &&
+            (((struct uip_eth_hdr *) ethHeader)->dest.addr[3] == 0xFF) &&
+            (((struct uip_eth_hdr *) ethHeader)->dest.addr[4] == 0xFF) &&
+            (((struct uip_eth_hdr *) ethHeader)->dest.addr[5] == 0xFF) ) {
+    /* IPv6 does not use broadcast addresses, hence this should not happen */
+    PRINTF(""eth2low: Ethernet broadcast address received, should not happen?\n"");
+/*     rndis_stat.txbad++; */
+    uip_len = 0;
+    return;
+  } else {
+    PRINTF(""eth2low: Addressed packet received... "");
+    //Check this returns OK
+    if (mac_createSicslowpanLongAddr( &(((struct uip_eth_hdr *) ethHeader)->dest.addr[0]), &destAddr) == 0) {
+      PRINTF("" translation failed\n"");
+/*       rndis_stat.txbad++; */
+      uip_len = 0;
+      return;
+    }
+    PRINTF("" translated OK\n"");
+    destAddrPtr = &destAddr;
+  }
+
+  //Remove header from length before passing onward
+  uip_len -= UIP_LLH_LEN;
+
+  //Some IP packets have link layer in them, need to change them around!
+  if (usbstick_mode.translate) {
+/*     uint8_t transReturn = */
+      mac_translateIPLinkLayer(ll_802154_type);
+    PRINTF(""IPTranslation: returns %d\n"", transReturn);
+  }
+
+  if (usbstick_mode.sendToRf){
+    tcpip_output(destAddrPtr);
+/* 	  rndis_stat.txok++; */
+  }
+
+  uip_len = 0;
+
+}
+",mac_ethernetToLowpan,,True,"[nan, 'CWE-685']"
+2,3,22,232,mac_LowpanToEthernet,mac_LowpanToEthernet( void),305,345,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_LowpanToEthernet( void){
+/*   parsed_frame = sicslowmac_get_frame(); */
+
+  //Setup generic ethernet stuff
+  ETHBUF(uip_buf)->type = htons(UIP_ETHTYPE_IPV6);
+
+  //Check for broadcast message
+  if(rimeaddr_cmp(packetbuf_addr(PACKETBUF_ADDR_RECEIVER), &rimeaddr_null)) {
+/*   if(  ( parsed_frame->fcf->destAddrMode == SHORTADDRMODE) && */
+/*        ( parsed_frame->dest_addr->addr16 == 0xffff) ) { */
+    ETHBUF(uip_buf)->dest.addr[0] = 0x33;
+    ETHBUF(uip_buf)->dest.addr[1] = 0x33;
+    ETHBUF(uip_buf)->dest.addr[2] = UIP_IP_BUF->destipaddr.u8[12];
+    ETHBUF(uip_buf)->dest.addr[3] = UIP_IP_BUF->destipaddr.u8[13];
+    ETHBUF(uip_buf)->dest.addr[4] = UIP_IP_BUF->destipaddr.u8[14];
+    ETHBUF(uip_buf)->dest.addr[5] = UIP_IP_BUF->destipaddr.u8[15];
+  } else {
+	//Otherwise we have a real address
+	mac_createEthernetAddr((uint8_t *) &(ETHBUF(uip_buf)->dest.addr[0]),
+                        (uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_RECEIVER));
+  }
+
+
+  mac_createEthernetAddr((uint8_t *) &(ETHBUF(uip_buf)->src.addr[0]),
+                         (uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER));
+
+  //We only do address translation in network mode!
+  if (usbstick_mode.translate) {
+    //Some IP packets have link layer in them, need to change them around!
+    mac_translateIPLinkLayer(ll_8023_type);
+  }
+
+  PRINTF(""Low2Eth: Sending packet to ethernet\n"");
+
+  uip_len += UIP_LLH_LEN;
+
+/*   rndis_send(uip_buf, uip_len, 1); */
+/*   rndis_stat.rxok++; */
+/*   uip_len = 0; */
+}
+",mac_LowpanToEthernet,,False,benign
+3,3,9,34,mac_translateIPLinkLayer,mac_translateIPLinkLayer( lltype_t target),358,371,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_translateIPLinkLayer( lltype_t target){
+
+#if UIP_LLADDR_LEN == 8
+  if (UIP_IP_BUF->proto == UIP_PROTO_ICMP6) {
+    PRINTF(""eth2low: ICMP Message detected\n"");
+    return mac_translateIcmpLinkLayer(target);
+  }
+  return 0;
+#else
+  return 1;
+#endif
+
+}
+",mac_translateIPLinkLayer,,False,benign
+4,22,81,507,mac_translateIcmpLinkLayer,mac_translateIcmpLinkLayer( lltype_t target),398,531,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_translateIcmpLinkLayer( lltype_t target){
+  uint16_t icmp_opt_offset = 0;
+  int16_t len = UIP_IP_BUF->len[1] | (UIP_IP_BUF->len[0] << 8);
+
+  uint16_t iplen;
+
+  uint8_t i;
+
+  int16_t sizechange;
+
+  uint8_t llbuf[16];
+
+  //Figure out offset to start of options
+  switch(UIP_ICMP_BUF->type) {
+    case ICMP6_NS:
+    case ICMP6_NA:
+      icmp_opt_offset = 24;
+      break;
+
+    case ICMP6_RS:
+      icmp_opt_offset = 8;
+      break;
+
+    case ICMP6_RA:
+      icmp_opt_offset = 16;
+      break;
+
+    case ICMP6_REDIRECT:
+      icmp_opt_offset = 40;
+      break;
+
+      /** Things without link-layer */
+    case ICMP6_DST_UNREACH:
+    case ICMP6_PACKET_TOO_BIG:
+    case ICMP6_TIME_EXCEEDED:
+    case ICMP6_PARAM_PROB:
+    case ICMP6_ECHO_REQUEST:
+    case ICMP6_ECHO_REPLY:
+      return 0;
+      break;
+
+    default:
+      return -1;
+  }
+
+  //Figure out length of options
+  len -= icmp_opt_offset;
+
+  //Sanity check
+  if (len < 8) return -2;
+
+  //While we have options to do...
+  while (len >= 8){
+
+    //If we have one of these, we have something useful!
+    if (((UIP_ICMP_OPTS(icmp_opt_offset)->type) == UIP_ND6_OPT_SLLAO) ||
+        ((UIP_ICMP_OPTS(icmp_opt_offset)->type) == UIP_ND6_OPT_TLLAO) ) {
+
+      /* Shrinking the buffer may thrash things, so we store the old
+         link-layer address */
+      for(i = 0; i < (UIP_ICMP_OPTS(icmp_opt_offset)->length*8 - 2); i++) {
+        llbuf[i] = UIP_ICMP_OPTS(icmp_opt_offset)->data[i];
+      }
+
+      //Shrink/grow buffer as needed
+      if (target == ll_802154_type) {
+        //Current is 802.3, Hence current link-layer option is 6 extra bytes
+        sizechange = 8;
+        slide(UIP_ICMP_OPTS(icmp_opt_offset)->data + 6, len - 6, sizechange);
+      } else if (target == ll_8023_type) {
+        /* Current is 802.15.4, Hence current link-layer option is 14 extra
+         * bytes.
+         * (Actual LL is 8 bytes, but total option length is in multiples of
+         * 8 Bytes, hence 8 + 2 = 10. Closest is 16 bytes, then 16 bytes for
+         * total optional length - 2 bytes for type + length leaves 14 )
+         */
+        sizechange = -8;
+        slide(UIP_ICMP_OPTS(icmp_opt_offset)->data + 14, len - 14, sizechange);
+      } else {
+        return -3; //Uh-oh!
+      }
+
+      //Translate addresses
+      if (target == ll_802154_type) {
+        mac_createSicslowpanLongAddr(llbuf, (uip_lladdr_t *)UIP_ICMP_OPTS(icmp_opt_offset)->data);
+      } else {
+        mac_createEthernetAddr(UIP_ICMP_OPTS(icmp_opt_offset)->data, (uip_lladdr_t *)llbuf);
+      }
+
+      //Adjust the length
+      if (target == ll_802154_type) {
+        UIP_ICMP_OPTS(icmp_opt_offset)->length = 2;
+      } else {
+        UIP_ICMP_OPTS(icmp_opt_offset)->length = 1;
+      }
+
+      //Adjust the IP header length, as well as uIP length
+      iplen = UIP_IP_BUF->len[1] | (UIP_IP_BUF->len[0]<<8);
+      iplen += sizechange;
+      len += sizechange;
+
+      UIP_IP_BUF->len[1] = (uint8_t)iplen;
+      UIP_IP_BUF->len[0] = (uint8_t)(iplen >> 8);
+
+      uip_len += sizechange;
+
+      //We broke ICMP checksum, be sure to fix that
+      UIP_ICMP_BUF->icmpchksum = 0;
+      UIP_ICMP_BUF->icmpchksum = ~uip_icmp6chksum();
+
+      //Finally set up next run in while loop
+      len -= 8 * UIP_ICMP_OPTS(icmp_opt_offset)->length;
+      icmp_opt_offset += 8 * UIP_ICMP_OPTS(icmp_opt_offset)->length;
+    } else {
+
+      //Not an option we care about, ignore it
+      len -= 8 * UIP_ICMP_OPTS(icmp_opt_offset)->length;
+
+      //This shouldn't happen!
+      if (UIP_ICMP_OPTS(icmp_opt_offset)->length == 0) {
+        PRINTF(""Option in ND packet has length zero, error?\n"");
+        len = 0;
+      }
+
+      icmp_opt_offset += 8 * UIP_ICMP_OPTS(icmp_opt_offset)->length;
+
+    } //If ICMP_OPT is one we care about
+
+  } //while(len >= 8)
+
+  return 0;
+
+}
+",mac_translateIcmpLinkLayer,,False,benign
+5,6,31,261,mac_createSicslowpanLongAddr,"mac_createSicslowpanLongAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)",539,595,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_createSicslowpanLongAddr( uint8_t * ethernet , uip_lladdr_t * lowpan){
+  uint8_t index;
+
+#if UIP_LLADDR_LEN == 8
+  //Special case - if the address is our address, we just copy over what we know to be
+  //our 802.15.4 address
+
+/*   if (memcmp_reverse((uint8_t *)&rndis_ethernet_addr, ethernet, 6) == 0) { */
+  if (memcmp((uint8_t *)&uip_lladdr.addr[2], ethernet, 6) == 0) {
+		memcpy((uint8_t *)lowpan, uip_lladdr.addr, 8);
+/* 		byte_reverse((uint8_t *)lowpan, 8); */
+
+		return 1;
+	}
+
+  //Check if translate bit is set, hence we have to look up the prefix
+  if (ethernet[0] & TRANSLATE_BIT_MASK) {
+
+    //Get top bits
+    index = ethernet[0] >> 3;
+
+    //Check this is plausible...
+    if (index >= prefixCounter) {
+      return 0;
+    }
+
+    //Copy over prefix
+    lowpan->addr[0] = prefixBuffer[index][0];
+	lowpan->addr[3] = prefixBuffer[index][1];
+	lowpan->addr[4] = prefixBuffer[index][2];
+
+    //Bit is clear
+    //so we copy all six
+  } else {
+    lowpan->addr[0] = ethernet[0];
+    lowpan->addr[3] = 0xff;
+    lowpan->addr[4] = 0xfe;
+  }
+
+  //Copy over reamining five bytes
+    lowpan->addr[1] = ethernet[1];
+    lowpan->addr[2] = ethernet[2];
+    lowpan->addr[5] = ethernet[3];
+    lowpan->addr[6] = ethernet[4];
+    lowpan->addr[7] = ethernet[5];
+
+#else
+  uint8_t i;
+
+	for(i = 0; i < UIP_LLADDR_LEN; i++) {
+		lowpan->addr[i] = ethernet[i];
+	}
+#endif
+
+  return 1;
+}
+",mac_createSicslowpanLongAddr,,True,['CWE-120']
+6,6,31,261,mac_createSicslowpanLongAddr,"mac_createSicslowpanLongAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)",539,595,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_createSicslowpanLongAddr( uint8_t * ethernet , uip_lladdr_t * lowpan){
+  uint8_t index;
+
+#if UIP_LLADDR_LEN == 8
+  //Special case - if the address is our address, we just copy over what we know to be
+  //our 802.15.4 address
+
+/*   if (memcmp_reverse((uint8_t *)&rndis_ethernet_addr, ethernet, 6) == 0) { */
+  if (memcmp((uint8_t *)&uip_lladdr.addr[2], ethernet, 6) == 0) {
+		memcpy((uint8_t *)lowpan, uip_lladdr.addr, 8);
+/* 		byte_reverse((uint8_t *)lowpan, 8); */
+
+		return 1;
+	}
+
+  //Check if translate bit is set, hence we have to look up the prefix
+  if (ethernet[0] & TRANSLATE_BIT_MASK) {
+
+    //Get top bits
+    index = ethernet[0] >> 3;
+
+    //Check this is plausible...
+    if (index >= prefixCounter) {
+      return 0;
+    }
+
+    //Copy over prefix
+    lowpan->addr[0] = prefixBuffer[index][0];
+	lowpan->addr[3] = prefixBuffer[index][1];
+	lowpan->addr[4] = prefixBuffer[index][2];
+
+    //Bit is clear
+    //so we copy all six
+  } else {
+    lowpan->addr[0] = ethernet[0];
+    lowpan->addr[3] = 0xff;
+    lowpan->addr[4] = 0xfe;
+  }
+
+  //Copy over reamining five bytes
+    lowpan->addr[1] = ethernet[1];
+    lowpan->addr[2] = ethernet[2];
+    lowpan->addr[5] = ethernet[3];
+    lowpan->addr[6] = ethernet[4];
+    lowpan->addr[7] = ethernet[5];
+
+#else
+  uint8_t i;
+
+	for(i = 0; i < UIP_LLADDR_LEN; i++) {
+		lowpan->addr[i] = ethernet[i];
+	}
+#endif
+
+  return 1;
+}
+",mac_createSicslowpanLongAddr,,True,['CWE-120']
+7,15,50,458,mac_createEthernetAddr,"mac_createEthernetAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)",603,690,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_createEthernetAddr( uint8_t * ethernet , uip_lladdr_t * lowpan){
+  uint8_t index = 0;
+  uint8_t i;
+/*   uint8_t j, match; */
+
+#if UIP_LLADDR_LEN == 8
+
+   //Special case - if the address is our address, we just copy over what we know to be
+  //our 802.3 address
+/*   if (memcmp_reverse(uip_lladdr.addr, (uint8_t *)lowpan, 8) == 0) { */
+  if (memcmp(uip_lladdr.addr, (uint8_t *)lowpan, 8) == 0) {
+		memcpy(ethernet, &uip_lladdr.addr[2], 6);
+/* 		byte_reverse(ethernet, 6); */
+
+		return 1;
+	}
+
+
+  //Check if we need to do anything:
+  if ((lowpan->addr[3] == 0xff) && (lowpan->addr[4] == 0xfe) &&
+      ((lowpan->addr[0] & TRANSLATE_BIT_MASK) == 0) &&
+      ((lowpan->addr[0] & MULTICAST_BIT_MASK) == 0) &&
+      (lowpan->addr[0] & LOCAL_BIT_MASK)) {
+
+    /** Nope: just copy over 6 bytes **/
+      ethernet[0] = lowpan->addr[0];
+	  ethernet[1] = lowpan->addr[1];
+	  ethernet[2] = lowpan->addr[2];
+	  ethernet[3] = lowpan->addr[5];
+	  ethernet[4] = lowpan->addr[6];
+	  ethernet[5] = lowpan->addr[7];
+
+
+  } else {
+
+    /** Yes: need to store prefix **/
+    for (i = 0; i < prefixCounter; i++)	{
+      //Check the current prefix - if it fails, check next one
+
+
+       if ((lowpan->addr[0] == prefixBuffer[i][0]) &&
+           (lowpan->addr[3] == prefixBuffer[i][1]) &&
+           (lowpan->addr[4] == prefixBuffer[i][2])) {
+			break;
+	   }
+
+    }
+
+    index = i;
+
+    //Deal with overflow, iron-fist style
+    if (index >= PREFIX_BUFFER_SIZE) {
+      index = 0;
+      prefixCounter = PREFIX_BUFFER_SIZE;
+    } else {
+      //Are we making a new one?
+      if (index == prefixCounter) {
+        prefixCounter++;
+      }
+    }
+
+    //Copy the prefix over, no matter if we have a new or old one
+    prefixBuffer[index][0] = lowpan->addr[0];
+	prefixBuffer[index][1] = lowpan->addr[3];
+	prefixBuffer[index][2] = lowpan->addr[4];
+
+    //Create ethernet MAC address now
+    ethernet[1] = lowpan->addr[1];
+	ethernet[2] = lowpan->addr[2];
+	ethernet[3] = lowpan->addr[5];
+	ethernet[4] = lowpan->addr[6];
+    ethernet[5] = lowpan->addr[7];
+
+
+    ethernet[0] = TRANSLATE_BIT_MASK | LOCAL_BIT_MASK | (index << 3);
+  }
+
+#else
+
+    //Create ethernet MAC address now
+	for(i = 0; i < UIP_LLADDR_LEN; i++) {
+		ethernet[i] = lowpan->addr[i];
+	}
+#endif
+
+  return 1;
+}
+",mac_createEthernetAddr,,True,['CWE-120']
+8,15,50,458,mac_createEthernetAddr,"mac_createEthernetAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)",603,690,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_createEthernetAddr( uint8_t * ethernet , uip_lladdr_t * lowpan){
+  uint8_t index = 0;
+  uint8_t i;
+/*   uint8_t j, match; */
+
+#if UIP_LLADDR_LEN == 8
+
+   //Special case - if the address is our address, we just copy over what we know to be
+  //our 802.3 address
+/*   if (memcmp_reverse(uip_lladdr.addr, (uint8_t *)lowpan, 8) == 0) { */
+  if (memcmp(uip_lladdr.addr, (uint8_t *)lowpan, 8) == 0) {
+		memcpy(ethernet, &uip_lladdr.addr[2], 6);
+/* 		byte_reverse(ethernet, 6); */
+
+		return 1;
+	}
+
+
+  //Check if we need to do anything:
+  if ((lowpan->addr[3] == 0xff) && (lowpan->addr[4] == 0xfe) &&
+      ((lowpan->addr[0] & TRANSLATE_BIT_MASK) == 0) &&
+      ((lowpan->addr[0] & MULTICAST_BIT_MASK) == 0) &&
+      (lowpan->addr[0] & LOCAL_BIT_MASK)) {
+
+    /** Nope: just copy over 6 bytes **/
+      ethernet[0] = lowpan->addr[0];
+	  ethernet[1] = lowpan->addr[1];
+	  ethernet[2] = lowpan->addr[2];
+	  ethernet[3] = lowpan->addr[5];
+	  ethernet[4] = lowpan->addr[6];
+	  ethernet[5] = lowpan->addr[7];
+
+
+  } else {
+
+    /** Yes: need to store prefix **/
+    for (i = 0; i < prefixCounter; i++)	{
+      //Check the current prefix - if it fails, check next one
+
+
+       if ((lowpan->addr[0] == prefixBuffer[i][0]) &&
+           (lowpan->addr[3] == prefixBuffer[i][1]) &&
+           (lowpan->addr[4] == prefixBuffer[i][2])) {
+			break;
+	   }
+
+    }
+
+    index = i;
+
+    //Deal with overflow, iron-fist style
+    if (index >= PREFIX_BUFFER_SIZE) {
+      index = 0;
+      prefixCounter = PREFIX_BUFFER_SIZE;
+    } else {
+      //Are we making a new one?
+      if (index == prefixCounter) {
+        prefixCounter++;
+      }
+    }
+
+    //Copy the prefix over, no matter if we have a new or old one
+    prefixBuffer[index][0] = lowpan->addr[0];
+	prefixBuffer[index][1] = lowpan->addr[3];
+	prefixBuffer[index][2] = lowpan->addr[4];
+
+    //Create ethernet MAC address now
+    ethernet[1] = lowpan->addr[1];
+	ethernet[2] = lowpan->addr[2];
+	ethernet[3] = lowpan->addr[5];
+	ethernet[4] = lowpan->addr[6];
+    ethernet[5] = lowpan->addr[7];
+
+
+    ethernet[0] = TRANSLATE_BIT_MASK | LOCAL_BIT_MASK | (index << 3);
+  }
+
+#else
+
+    //Create ethernet MAC address now
+	for(i = 0; i < UIP_LLADDR_LEN; i++) {
+		ethernet[i] = lowpan->addr[i];
+	}
+#endif
+
+  return 1;
+}
+",mac_createEthernetAddr,,True,['CWE-120']
+9,5,15,88,slide,"slide( uint8_t * data , uint8_t length , int16_t slide)",701,723,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"slide( uint8_t * data , uint8_t length , int16_t slide){
+  //Sanity checks
+  if (!length) return;
+  if (!slide) return;
+
+  uint8_t i = 0;
+
+  while(length) {
+    length--;
+
+    //If we are sliding up, we do from the top of the buffer down
+    if (slide > 0) {
+      *(data + length + slide) = *(data + length);
+
+      //If we are sliding down, we do from the bottom of the buffer up
+    } else {
+      *(data + slide + i) = *(data + i);
+    }
+
+    i++;
+  }
+}
+",slide,,False,benign
+10,5,15,88,slide,"slide( uint8_t * data , uint8_t length , int16_t slide)",701,723,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"slide( uint8_t * data , uint8_t length , int16_t slide){
+  //Sanity checks
+  if (!length) return;
+  if (!slide) return;
+
+  uint8_t i = 0;
+
+  while(length) {
+    length--;
+
+    //If we are sliding up, we do from the top of the buffer down
+    if (slide > 0) {
+      *(data + length + slide) = *(data + length);
+
+      //If we are sliding down, we do from the bottom of the buffer up
+    } else {
+      *(data + slide + i) = *(data + i);
+    }
+
+    i++;
+  }
+}
+",slide,,False,benign
+11,5,15,88,slide,"slide( uint8_t * data , uint8_t length , int16_t slide)",701,723,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"slide( uint8_t * data , uint8_t length , int16_t slide){
+  //Sanity checks
+  if (!length) return;
+  if (!slide) return;
+
+  uint8_t i = 0;
+
+  while(length) {
+    length--;
+
+    //If we are sliding up, we do from the top of the buffer down
+    if (slide > 0) {
+      *(data + length + slide) = *(data + length);
+
+      //If we are sliding down, we do from the bottom of the buffer up
+    } else {
+      *(data + slide + i) = *(data + i);
+    }
+
+    i++;
+  }
+}
+",slide,,False,benign
+12,6,11,47,mac_ethhijack,mac_ethhijack( const struct mac_driver * r),733,752,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_ethhijack( const struct mac_driver * r){
+	if (usbstick_mode.raw) {
+		mac_802154raw(r);
+	}
+
+	if (usbstick_mode.sicslowpan) {
+
+#if UIP_CONF_USE_RUM
+	if (parsed_frame->payload[4]) { /* RUM 6lowpan frame type */
+#endif
+		sicslowinput(r);
+#if UIP_CONF_USE_RUM
+	}
+#endif
+
+
+	}
+
+}
+",mac_ethhijack,,False,benign
+13,2,5,21,mac_ethhijack_nondata,mac_ethhijack_nondata( const struct mac_driver * r),756,760,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_ethhijack_nondata( const struct mac_driver * r){
+	if (usbstick_mode.raw)
+		mac_802154raw(r);
+}
+",mac_ethhijack_nondata,,False,benign
+14,4,32,325,mac_logTXtoEthernet,"mac_logTXtoEthernet( frame_create_params_t * p , frame_result_t * frame_result)",771,824,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_logTXtoEthernet( frame_create_params_t * p , frame_result_t * frame_result){
+  uint8_t sendlen;
+
+  /* Make sure we are supposed to do this */
+  if (usbstick_mode.raw == 0) return;
+
+/* Get the raw frame */
+  memcpy(&raw_buf[UIP_LLH_LEN], frame_result->frame, frame_result->length);
+  sendlen = frame_result->length;
+
+ //Setup generic ethernet stuff
+  ETHBUF(raw_buf)->type = htons(UIP_ETHTYPE_802154);
+
+  uint64_t tempaddr;
+
+
+  //Check for broadcast message
+  //if(rimeaddr_cmp((const rimeaddr_t *)destAddr, &rimeaddr_null)) {
+  if(  ( p->fcf.destAddrMode == SHORTADDRMODE) &&
+       ( p->dest_addr.addr16 == 0xffff) ) {
+    ETHBUF(raw_buf)->dest.addr[0] = 0x33;
+    ETHBUF(raw_buf)->dest.addr[1] = 0x33;
+    ETHBUF(raw_buf)->dest.addr[2] = UIP_IP_BUF->destipaddr.u8[12];
+    ETHBUF(raw_buf)->dest.addr[3] = UIP_IP_BUF->destipaddr.u8[13];
+    ETHBUF(raw_buf)->dest.addr[4] = UIP_IP_BUF->destipaddr.u8[14];
+    ETHBUF(raw_buf)->dest.addr[5] = UIP_IP_BUF->destipaddr.u8[15];
+  } else {
+
+	tempaddr = p->dest_addr.addr64;
+
+	byte_reverse((uint8_t *)&tempaddr, 8);
+
+	//Otherwise we have a real address
+	mac_createEthernetAddr((uint8_t *) &(ETHBUF(raw_buf)->dest.addr[0]),
+            (uip_lladdr_t *)&tempaddr);
+
+  }
+
+	tempaddr = p->src_addr.addr64;
+
+	byte_reverse((uint8_t *)&tempaddr, 8);
+
+  mac_createEthernetAddr((uint8_t *) &(ETHBUF(raw_buf)->src.addr[0]),
+                         (uip_lladdr_t *)&tempaddr);
+
+   PRINTF(""Low2Eth: Sending 802.15.4 packet to ethernet\n"");
+
+  sendlen += UIP_LLH_LEN;
+
+  rndis_send(raw_buf, sendlen, 0);
+  rndis_stat.rxok++;
+  return;
+}
+",mac_logTXtoEthernet,,True,['CWE-120']
+15,4,32,325,mac_logTXtoEthernet,"mac_logTXtoEthernet( frame_create_params_t * p , frame_result_t * frame_result)",771,824,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_logTXtoEthernet( frame_create_params_t * p , frame_result_t * frame_result){
+  uint8_t sendlen;
+
+  /* Make sure we are supposed to do this */
+  if (usbstick_mode.raw == 0) return;
+
+/* Get the raw frame */
+  memcpy(&raw_buf[UIP_LLH_LEN], frame_result->frame, frame_result->length);
+  sendlen = frame_result->length;
+
+ //Setup generic ethernet stuff
+  ETHBUF(raw_buf)->type = htons(UIP_ETHTYPE_802154);
+
+  uint64_t tempaddr;
+
+
+  //Check for broadcast message
+  //if(rimeaddr_cmp((const rimeaddr_t *)destAddr, &rimeaddr_null)) {
+  if(  ( p->fcf.destAddrMode == SHORTADDRMODE) &&
+       ( p->dest_addr.addr16 == 0xffff) ) {
+    ETHBUF(raw_buf)->dest.addr[0] = 0x33;
+    ETHBUF(raw_buf)->dest.addr[1] = 0x33;
+    ETHBUF(raw_buf)->dest.addr[2] = UIP_IP_BUF->destipaddr.u8[12];
+    ETHBUF(raw_buf)->dest.addr[3] = UIP_IP_BUF->destipaddr.u8[13];
+    ETHBUF(raw_buf)->dest.addr[4] = UIP_IP_BUF->destipaddr.u8[14];
+    ETHBUF(raw_buf)->dest.addr[5] = UIP_IP_BUF->destipaddr.u8[15];
+  } else {
+
+	tempaddr = p->dest_addr.addr64;
+
+	byte_reverse((uint8_t *)&tempaddr, 8);
+
+	//Otherwise we have a real address
+	mac_createEthernetAddr((uint8_t *) &(ETHBUF(raw_buf)->dest.addr[0]),
+            (uip_lladdr_t *)&tempaddr);
+
+  }
+
+	tempaddr = p->src_addr.addr64;
+
+	byte_reverse((uint8_t *)&tempaddr, 8);
+
+  mac_createEthernetAddr((uint8_t *) &(ETHBUF(raw_buf)->src.addr[0]),
+                         (uip_lladdr_t *)&tempaddr);
+
+   PRINTF(""Low2Eth: Sending 802.15.4 packet to ethernet\n"");
+
+  sendlen += UIP_LLH_LEN;
+
+  rndis_send(raw_buf, sendlen, 0);
+  rndis_stat.rxok++;
+  return;
+}
+",mac_logTXtoEthernet,,True,['CWE-120']
+16,3,27,280,mac_802154raw,mac_802154raw( const struct mac_driver * r),835,878,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_jsjhodq4_Flawfinder,"mac_802154raw( const struct mac_driver * r){
+  uint8_t sendlen;
+
+  parsed_frame = sicslowmac_get_frame();
+
+  /* Get the raw frame */
+  memcpy(&raw_buf[UIP_LLH_LEN], radio_frame_data(), radio_frame_length());
+  sendlen = radio_frame_length();
+
+ //Setup generic ethernet stuff
+  ETHBUF(raw_buf)->type = htons(UIP_ETHTYPE_802154);
+
+
+  //Check for broadcast message
+  //if(rimeaddr_cmp((const rimeaddr_t *)destAddr, &rimeaddr_null)) {
+  if(  ( parsed_frame->fcf->destAddrMode == SHORTADDRMODE) &&
+       ( parsed_frame->dest_addr->addr16 == 0xffff) ) {
+    ETHBUF(raw_buf)->dest.addr[0] = 0x33;
+    ETHBUF(raw_buf)->dest.addr[1] = 0x33;
+    ETHBUF(raw_buf)->dest.addr[2] = UIP_IP_BUF->destipaddr.u8[12];
+    ETHBUF(raw_buf)->dest.addr[3] = UIP_IP_BUF->destipaddr.u8[13];
     ETHBUF(raw_buf)->dest.addr[4] = UIP_IP_BUF->destipaddr.u8[14];
     ETHBUF(raw_buf)->dest.addr[5] = UIP_IP_BUF->destipaddr.u8[15];
   } else {
@@ -12,36 +1740,1180 @@
 
   mac_createEthernetAddr((uint8_t *) &(ETHBUF(raw_buf)->src.addr[0]),
                          (uip_lladdr_t *)packetbuf_addr(PACKETBUF_ADDR_SENDER));
-",[],False
-1,15,49,369,mac_ethernetToLowpan,mac_ethernetToLowpan( uint8_t * ethHeader),224,298,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_ethernetToLowpan( uint8_t * ethHeader),[],False
-2,3,22,232,mac_LowpanToEthernet,mac_LowpanToEthernet( void),305,345,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_LowpanToEthernet( void),[],False
-3,3,9,34,mac_translateIPLinkLayer,mac_translateIPLinkLayer( lltype_t target),358,371,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_translateIPLinkLayer( lltype_t target),[],False
-4,22,81,507,mac_translateIcmpLinkLayer,mac_translateIcmpLinkLayer( lltype_t target),398,531,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_translateIcmpLinkLayer( lltype_t target),[],False
-5,6,31,261,mac_createSicslowpanLongAddr,"mac_createSicslowpanLongAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)",539,595,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,"mac_createSicslowpanLongAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)","[('CWE-120', '\t\tmemcpy((uint8_t *)lowpan, uip_lladdr.addr, 8);')]",True
-6,15,50,458,mac_createEthernetAddr,"mac_createEthernetAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)",603,690,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,"mac_createEthernetAddr( uint8_t * ethernet , uip_lladdr_t * lowpan)","[('CWE-120', '\t\tmemcpy(ethernet, &uip_lladdr.addr[2], 6);')]",True
-7,5,15,88,slide,"slide( uint8_t * data , uint8_t length , int16_t slide)",701,723,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,"slide( uint8_t * data , uint8_t length , int16_t slide)",[],False
-8,6,11,47,mac_ethhijack,mac_ethhijack( const struct mac_driver * r),733,752,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_ethhijack( const struct mac_driver * r),[],False
-9,2,5,21,mac_ethhijack_nondata,mac_ethhijack_nondata( const struct mac_driver * r),756,760,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_ethhijack_nondata( const struct mac_driver * r),[],False
-10,4,32,325,mac_logTXtoEthernet,"mac_logTXtoEthernet( frame_create_params_t * p , frame_result_t * frame_result)",771,824,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,"mac_logTXtoEthernet( frame_create_params_t * p , frame_result_t * frame_result)","[('CWE-120', '  memcpy(&raw_buf[UIP_LLH_LEN], frame_result->frame, frame_result->length);')]",True
-11,3,27,280,mac_802154raw,mac_802154raw( const struct mac_driver * r),835,878,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_56awq8by_Flawfinder,0,mac_802154raw( const struct mac_driver * r),"[('CWE-120', '  memcpy(&raw_buf[UIP_LLH_LEN], radio_frame_data(), radio_frame_length());')]",True
-12,1,4,17,slip_set_input_callback,slip_set_input_callback( void(*c)(void)),93,96,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,"slip_set_input_callback( void(*c)(void))  }
+
+  PRINTF(""Low2Eth: Sending 802.15.4 packet to ethernet\n"");
+
+  sendlen += UIP_LLH_LEN;
+
+  rndis_send(raw_buf, sendlen, 1);
+  rndis_stat.rxok++;
+
+  return;
+}
+",mac_802154raw,,True,['CWE-120']
+17,1,4,17,slip_set_input_callback,slip_set_input_callback( void(*c)(void)),93,96,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"slip_set_input_callback( void(*c)(void)){
+  input_callback = c;
+}
+",slip_set_input_callback,,False,benign
+18,1,4,17,slip_set_tcpip_input_callback,slip_set_tcpip_input_callback( void(*c)(void)),99,102,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"slip_set_tcpip_input_callback( void(*c)(void)){
+  tcpip_input_callback = c;
+}
+",slip_set_tcpip_input_callback,,False,benign
+19,5,24,114,slip_send,slip_send( void),106,132,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"slip_send( void){
+  uint16_t i;
+  uint8_t *ptr;
+  uint8_t c;
+
+  slip_arch_writeb(SLIP_END);
+
+  ptr = &uip_buf[UIP_LLH_LEN];
+  for(i = 0; i < uip_len; ++i) {
+    if(i == UIP_TCPIP_HLEN) {
+      ptr = (uint8_t *)uip_appdata;
+    }
+    c = *ptr++;
+    if(c == SLIP_END) {
+      slip_arch_writeb(SLIP_ESC);
+      c = SLIP_ESC_END;
+    } else if(c == SLIP_ESC) {
+      slip_arch_writeb(SLIP_ESC);
+      c = SLIP_ESC_ESC;
+    }
+    slip_arch_writeb(c);
+  }
+  slip_arch_writeb(SLIP_END);
+
+  return UIP_FW_OK;
+}
+",slip_send,,True,"[nan, 'CWE-788']"
+20,4,20,99,slip_write,"slip_write( const void * _ptr , int len)",136,158,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"slip_write( const void * _ptr , int len){
+  const uint8_t *ptr = _ptr;
+  uint16_t i;
+  uint8_t c;
+
+  slip_arch_writeb(SLIP_END);
+
+  for(i = 0; i < len; ++i) {
+    c = *ptr++;
+    if(c == SLIP_END) {
+      slip_arch_writeb(SLIP_ESC);
+      c = SLIP_ESC_END;
+    } else if(c == SLIP_ESC) {
+      slip_arch_writeb(SLIP_ESC);
+      c = SLIP_ESC_ESC;
+    }
+    slip_arch_writeb(c);
+  }
+  slip_arch_writeb(SLIP_END);
+
+  return len;
+}
+",slip_write,,True,unknown_vul
+21,4,20,99,slip_write,"slip_write( const void * _ptr , int len)",136,158,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"slip_write( const void * _ptr , int len){
+  const uint8_t *ptr = _ptr;
+  uint16_t i;
+  uint8_t c;
+
+  slip_arch_writeb(SLIP_END);
+
+  for(i = 0; i < len; ++i) {
+    c = *ptr++;
+    if(c == SLIP_END) {
+      slip_arch_writeb(SLIP_ESC);
+      c = SLIP_ESC_END;
+    } else if(c == SLIP_ESC) {
+      slip_arch_writeb(SLIP_ESC);
+      c = SLIP_ESC_ESC;
+    }
+    slip_arch_writeb(c);
+  }
+  slip_arch_writeb(SLIP_END);
+
+  return len;
+}
+",slip_write,,True,unknown_vul
+22,1,5,18,rxbuf_init,rxbuf_init( void),161,165,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"rxbuf_init( void){
+  begin = end = pkt_end = 0;
+  state = STATE_OK;
+}
+",rxbuf_init,,False,benign
+23,18,66,403,slip_poll_handler,"slip_poll_handler( uint8_t * outbuf , uint16_t blen)",169,251,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"slip_poll_handler( uint8_t * outbuf , uint16_t blen){
+  /* This is a hack and won't work across buffer edge! */
+  if(rxbuf[begin] == 'C') {
+    int i;
+    if(begin < end && (end - begin) >= 6
+       && memcmp(&rxbuf[begin], ""CLIENT"", 6) == 0) {
+      state = STATE_TWOPACKETS;	/* Interrupts do nothing. */
+      memset(&rxbuf[begin], 0x0, 6);
+
+      rxbuf_init();
+
+      for(i = 0; i < 13; i++) {
+	slip_arch_writeb(""CLIENTSERVER\300""[i]);
+      }
+      return 0;
+    }
+  } else if(rxbuf[begin] == '?') {
+    int i, j;
+    char* hexchar = ""0123456789abcdef"";
+    if(begin < end && (end - begin) >= 2
+       && rxbuf[begin + 1] == 'M') {
+      state = STATE_TWOPACKETS;	/* Interrupts do nothing. */
+      rxbuf[begin] = 0;
+      rxbuf[begin + 1] = 0;
+      
+      rxbuf_init();
+      
+      /* this is just a test so far... just to see if it works */
+      slip_arch_writeb('!');
+      slip_arch_writeb('M');
+      for(j = 0; j < 8; j++) {
+	slip_arch_writeb(hexchar[ds2411_id[j] >> 4]);
+	slip_arch_writeb(hexchar[ds2411_id[j] & 15]);
+      }
+      slip_arch_writeb(SLIP_END);
+      return 0;
+    }
+  }
+
+  /*
+   * Interrupt can not change begin but may change pkt_end.
+   * If pkt_end != begin it will not change again.
+   */
+  if(begin != pkt_end) {
+    uint16_t len;
+
+    if(begin < pkt_end) {
+      len = pkt_end - begin;
+      if(len > blen) {
+	len = 0;
+      } else {
+	memcpy(outbuf, &rxbuf[begin], len);
+      }
+    } else {
+      len = (RX_BUFSIZE - begin) + (pkt_end - 0);
+      if(len > blen) {
+	len = 0;
+      } else {
+	unsigned i;
+	for(i = begin; i < RX_BUFSIZE; i++) {
+	  *outbuf++ = rxbuf[i];
+	}
+	for(i = 0; i < pkt_end; i++) {
+	  *outbuf++ = rxbuf[i];
+	}
+      }
+    }
+
+    /* Remove data from buffer together with the copied packet. */
+    begin = pkt_end;
+    if(state == STATE_TWOPACKETS) {
+      pkt_end = end;
+      state = STATE_OK;		/* Assume no bytes where lost! */
+
+      /* One more packet is buffered, need to be polled again! */
+      process_poll(&slip_process);
+    }
+    return len;
+  }
+
+  return 0;
+}
+",slip_poll_handler,,True,"[nan, 'CWE-120']"
+24,18,66,403,slip_poll_handler,"slip_poll_handler( uint8_t * outbuf , uint16_t blen)",169,251,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"slip_poll_handler( uint8_t * outbuf , uint16_t blen){
+  /* This is a hack and won't work across buffer edge! */
+  if(rxbuf[begin] == 'C') {
+    int i;
+    if(begin < end && (end - begin) >= 6
+       && memcmp(&rxbuf[begin], ""CLIENT"", 6) == 0) {
+      state = STATE_TWOPACKETS;	/* Interrupts do nothing. */
+      memset(&rxbuf[begin], 0x0, 6);
+
+      rxbuf_init();
+
+      for(i = 0; i < 13; i++) {
+	slip_arch_writeb(""CLIENTSERVER\300""[i]);
+      }
+      return 0;
+    }
+  } else if(rxbuf[begin] == '?') {
+    int i, j;
+    char* hexchar = ""0123456789abcdef"";
+    if(begin < end && (end - begin) >= 2
+       && rxbuf[begin + 1] == 'M') {
+      state = STATE_TWOPACKETS;	/* Interrupts do nothing. */
+      rxbuf[begin] = 0;
+      rxbuf[begin + 1] = 0;
+      
+      rxbuf_init();
+      
+      /* this is just a test so far... just to see if it works */
+      slip_arch_writeb('!');
+      slip_arch_writeb('M');
+      for(j = 0; j < 8; j++) {
+	slip_arch_writeb(hexchar[ds2411_id[j] >> 4]);
+	slip_arch_writeb(hexchar[ds2411_id[j] & 15]);
+      }
+      slip_arch_writeb(SLIP_END);
+      return 0;
+    }
+  }
+
+  /*
+   * Interrupt can not change begin but may change pkt_end.
+   * If pkt_end != begin it will not change again.
+   */
+  if(begin != pkt_end) {
+    uint16_t len;
+
+    if(begin < pkt_end) {
+      len = pkt_end - begin;
+      if(len > blen) {
+	len = 0;
+      } else {
+	memcpy(outbuf, &rxbuf[begin], len);
+      }
+    } else {
+      len = (RX_BUFSIZE - begin) + (pkt_end - 0);
+      if(len > blen) {
+	len = 0;
+      } else {
+	unsigned i;
+	for(i = begin; i < RX_BUFSIZE; i++) {
+	  *outbuf++ = rxbuf[i];
+	}
+	for(i = 0; i < pkt_end; i++) {
+	  *outbuf++ = rxbuf[i];
+	}
+      }
+    }
+
+    /* Remove data from buffer together with the copied packet. */
+    begin = pkt_end;
+    if(state == STATE_TWOPACKETS) {
+      pkt_end = end;
+      state = STATE_OK;		/* Assume no bytes where lost! */
+
+      /* One more packet is buffered, need to be polled again! */
+      process_poll(&slip_process);
+    }
+    return len;
+  }
+
+  return 0;
+}
+",slip_poll_handler,,True,"[nan, 'CWE-120']"
+25,16,51,323,PROCESS_THREAD,"PROCESS_THREAD( slip_process , ev , data)",253,313,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"PROCESS_THREAD( slip_process , ev , data){
+  PROCESS_BEGIN();
+
+  rxbuf_init();
+
+  while(1) {
+    PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+
+    slip_active = 1;
+
+    /* Move packet from rxbuf to buffer provided by uIP. */
+    uip_len = slip_poll_handler(&uip_buf[UIP_LLH_LEN],
+				UIP_BUFSIZE - UIP_LLH_LEN);
+#if !UIP_CONF_IPV6
+    if(uip_len == 4 && strncmp((char*)&uip_buf[UIP_LLH_LEN], ""?IPA"", 4) == 0) {
+      char buf[8];
+      memcpy(&buf[0], ""=IPA"", 4);
+      memcpy(&buf[4], &uip_hostaddr, 4);
+      if(input_callback) {
+	input_callback();
+      }
+      slip_write(buf, 8);
+    } else if(uip_len > 0
+       && uip_len == (((uint16_t)(BUF->len[0]) << 8) + BUF->len[1])
+       && uip_ipchksum() == 0xffff) {
+#define IP_DF   0x40
+      if(BUF->ipid[0] == 0 && BUF->ipid[1] == 0 && BUF->ipoffset[0] & IP_DF) {
+	static uint16_t ip_id;
+	uint16_t nid = ip_id++;
+	BUF->ipid[0] = nid >> 8;
+	BUF->ipid[1] = nid;
+	nid = htons(nid);
+	nid = ~nid;		/* negate */
+	BUF->ipchksum += nid;	/* add */
+	if(BUF->ipchksum < nid) { /* 1-complement overflow? */
+	  BUF->ipchksum++;
+	}
+      }
+      if(tcpip_input_callback) {
+        tcpip_input_callback();
+      } else {
+        tcpip_input();
+      }
+    } else {
+      uip_len = 0;
+      SLIP_STATISTICS(slip_ip_drop++);
+    }
+#else /* UIP_CONF_IPV6 */
+    if(uip_len > 0) {
+      if(tcpip_input_callback) {
+        tcpip_input_callback();
+      } else {
+        tcpip_input();
+      }
+    }
+#endif /* UIP_CONF_IPV6 */
+  }
+
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,"['CWE-685', 'CWE-120', 'CWE-119!/CWE-120']"
+26,16,51,323,PROCESS_THREAD,"PROCESS_THREAD( slip_process , ev , data)",253,313,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"PROCESS_THREAD( slip_process , ev , data){
+  PROCESS_BEGIN();
+
+  rxbuf_init();
+
+  while(1) {
+    PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+
+    slip_active = 1;
+
+    /* Move packet from rxbuf to buffer provided by uIP. */
+    uip_len = slip_poll_handler(&uip_buf[UIP_LLH_LEN],
+				UIP_BUFSIZE - UIP_LLH_LEN);
+#if !UIP_CONF_IPV6
+    if(uip_len == 4 && strncmp((char*)&uip_buf[UIP_LLH_LEN], ""?IPA"", 4) == 0) {
+      char buf[8];
+      memcpy(&buf[0], ""=IPA"", 4);
+      memcpy(&buf[4], &uip_hostaddr, 4);
+      if(input_callback) {
+	input_callback();
+      }
+      slip_write(buf, 8);
+    } else if(uip_len > 0
+       && uip_len == (((uint16_t)(BUF->len[0]) << 8) + BUF->len[1])
+       && uip_ipchksum() == 0xffff) {
+#define IP_DF   0x40
+      if(BUF->ipid[0] == 0 && BUF->ipid[1] == 0 && BUF->ipoffset[0] & IP_DF) {
+	static uint16_t ip_id;
+	uint16_t nid = ip_id++;
+	BUF->ipid[0] = nid >> 8;
+	BUF->ipid[1] = nid;
+	nid = htons(nid);
+	nid = ~nid;		/* negate */
+	BUF->ipchksum += nid;	/* add */
+	if(BUF->ipchksum < nid) { /* 1-complement overflow? */
+	  BUF->ipchksum++;
+	}
+      }
+      if(tcpip_input_callback) {
+        tcpip_input_callback();
+      } else {
+        tcpip_input();
+      }
+    } else {
+      uip_len = 0;
+      SLIP_STATISTICS(slip_ip_drop++);
+    }
+#else /* UIP_CONF_IPV6 */
+    if(uip_len > 0) {
+      if(tcpip_input_callback) {
+        tcpip_input_callback();
+      } else {
+        tcpip_input();
+      }
+    }
+#endif /* UIP_CONF_IPV6 */
+  }
+
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,"['CWE-685', 'CWE-120', 'CWE-119!/CWE-120']"
+27,16,51,323,PROCESS_THREAD,"PROCESS_THREAD( slip_process , ev , data)",253,313,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"PROCESS_THREAD( slip_process , ev , data){
+  PROCESS_BEGIN();
+
+  rxbuf_init();
+
+  while(1) {
+    PROCESS_YIELD_UNTIL(ev == PROCESS_EVENT_POLL);
+
+    slip_active = 1;
+
+    /* Move packet from rxbuf to buffer provided by uIP. */
+    uip_len = slip_poll_handler(&uip_buf[UIP_LLH_LEN],
+				UIP_BUFSIZE - UIP_LLH_LEN);
+#if !UIP_CONF_IPV6
+    if(uip_len == 4 && strncmp((char*)&uip_buf[UIP_LLH_LEN], ""?IPA"", 4) == 0) {
+      char buf[8];
+      memcpy(&buf[0], ""=IPA"", 4);
+      memcpy(&buf[4], &uip_hostaddr, 4);
+      if(input_callback) {
+	input_callback();
+      }
+      slip_write(buf, 8);
+    } else if(uip_len > 0
+       && uip_len == (((uint16_t)(BUF->len[0]) << 8) + BUF->len[1])
+       && uip_ipchksum() == 0xffff) {
+#define IP_DF   0x40
+      if(BUF->ipid[0] == 0 && BUF->ipid[1] == 0 && BUF->ipoffset[0] & IP_DF) {
+	static uint16_t ip_id;
+	uint16_t nid = ip_id++;
+	BUF->ipid[0] = nid >> 8;
+	BUF->ipid[1] = nid;
+	nid = htons(nid);
+	nid = ~nid;		/* negate */
+	BUF->ipchksum += nid;	/* add */
+	if(BUF->ipchksum < nid) { /* 1-complement overflow? */
+	  BUF->ipchksum++;
+	}
+      }
+      if(tcpip_input_callback) {
+        tcpip_input_callback();
+      } else {
+        tcpip_input();
+      }
+    } else {
+      uip_len = 0;
+      SLIP_STATISTICS(slip_ip_drop++);
+    }
+#else /* UIP_CONF_IPV6 */
+    if(uip_len > 0) {
+      if(tcpip_input_callback) {
+        tcpip_input_callback();
+      } else {
+        tcpip_input();
+      }
+    }
+#endif /* UIP_CONF_IPV6 */
+  }
+
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,"['CWE-685', 'CWE-120', 'CWE-119!/CWE-120']"
+28,16,63,252,slip_input_byte,slip_input_byte( unsigned char c),316,391,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename__br2r342_Flawfinder,"slip_input_byte( unsigned char c){
+  switch(state) {
+  case STATE_RUBBISH:
+    if(c == SLIP_END) {
+      state = STATE_OK;
+    }
+    return 0;
+
+  case STATE_TWOPACKETS:       /* Two packets are already buffered! */
+    return 0;
+
+  case STATE_ESC:
+    if(c == SLIP_ESC_END) {
+      c = SLIP_END;
+    } else if(c == SLIP_ESC_ESC) {
+      c = SLIP_ESC;
+    } else {
+      state = STATE_RUBBISH;
+      SLIP_STATISTICS(slip_rubbish++);
+      end = pkt_end;		/* remove rubbish */
+      return 0;
+    }
+    state = STATE_OK;
+    break;
+
+  case STATE_OK:
+    if(c == SLIP_ESC) {
+      state = STATE_ESC;
+      return 0;
+    } else if(c == SLIP_END) {
+	/*
+	 * We have a new packet, possibly of zero length.
+	 *
+	 * There may already be one packet buffered.
+	 */
+      if(end != pkt_end) {	/* Non zero length. */
+	if(begin == pkt_end) {	/* None buffered. */
+	  pkt_end = end;
+	} else {
+	  state = STATE_TWOPACKETS;
+	  SLIP_STATISTICS(slip_twopackets++);
+	}
+	process_poll(&slip_process);
+	return 1;
+      }
+      return 0;
+    }
+    break;
+  }
+
+  /* add_char: */
+  {
+    unsigned next;
+    next = end + 1;
+    if(next == RX_BUFSIZE) {
+      next = 0;
+    }
+    if(next == begin) {		/* rxbuf is full */
+      state = STATE_RUBBISH;
+      SLIP_STATISTICS(slip_overflow++);
+      end = pkt_end;		/* remove rubbish */
+      return 0;
+    }
+    rxbuf[end] = c;
+    end = next;
+  }
 
   /* There could be a separate poll routine for this. */
-",[],False
-13,1,4,17,slip_set_tcpip_input_callback,slip_set_tcpip_input_callback( void(*c)(void)),99,102,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,slip_set_tcpip_input_callback( void(*c)(void)),[],False
-14,5,24,114,slip_send,slip_send( void),106,132,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,slip_send( void),[],False
-15,4,20,99,slip_write,"slip_write( const void * _ptr , int len)",136,158,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,"slip_write( const void * _ptr , int len)",[],False
-16,1,5,18,rxbuf_init,rxbuf_init( void),161,165,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,rxbuf_init( void),[],False
-17,18,66,403,slip_poll_handler,"slip_poll_handler( uint8_t * outbuf , uint16_t blen)",169,251,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,"slip_poll_handler( uint8_t * outbuf , uint16_t blen)","[('CWE-120', '\tmemcpy(outbuf, &rxbuf[begin], len);')]",True
-18,16,51,323,PROCESS_THREAD,"PROCESS_THREAD( slip_process , ev , data)",253,313,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,"PROCESS_THREAD( slip_process , ev , data)","[('CWE-119!/CWE-120', '      char buf[8];'), ('CWE-120', '      memcpy(&buf[0], ""=IPA"", 4);'), ('CWE-120', '      memcpy(&buf[4], &uip_hostaddr, 4);')]",True
-19,16,63,252,slip_input_byte,slip_input_byte( unsigned char c),316,391,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_iy_khv4s_Flawfinder,0,slip_input_byte( unsigned char c),[],False
-20,1,1,13,htons,htons( u16_t val),21,21,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,htons( u16_t val),[],False
-21,3,11,95,uip_netif_addr_autoconf_set,"uip_netif_addr_autoconf_set( uip_ipaddr_t * ipaddr , uip_lladdr_t * lladdr)",28,49,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,"uip_netif_addr_autoconf_set( uip_ipaddr_t * ipaddr , uip_lladdr_t * lladdr)","[('CWE-120', '  memcpy(ipaddr->u8 + 8, lladdr, UIP_LLADDR_LEN);'), ('CWE-120', '  memcpy(ipaddr->u8 + 8, lladdr, 3);'), ('CWE-120', '  memcpy(ipaddr->u8 + 13, lladdr + 3, 3);')]",True
-22,1,4,18,uip_netif_addr_add,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)",52,55,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)",[],False
-23,5,24,124,chksum,"chksum( u16_t sum , const u8_t * data , u16_t len)",59,87,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,"chksum( u16_t sum , const u8_t * data , u16_t len)",[],False
-24,2,11,101,upper_layer_chksum,upper_layer_chksum( u8_t proto),90,108,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,upper_layer_chksum( u8_t proto),[],False
-25,1,4,12,uip_icmp6chksum,uip_icmp6chksum( void),112,115,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_rlyk13ra_Flawfinder,0,uip_icmp6chksum( void),[],False
-26,1,12,50,usage,usage( int result),40,51,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_y41tn6w__Flawfinder,0,"usage( int result)	      fprintf(stderr, ""**** slip overflow\n"");
+  if(c == 'T' && rxbuf[begin] == 'C') {
+    process_poll(&slip_process);
+    return 1;
+  }
+
+  return 0;
+}
+",slip_input_byte,,False,benign
+29,1,1,13,htons,htons( u16_t val),21,21,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,htons( u16_t val),htons,,False,benign
+30,3,11,95,uip_netif_addr_autoconf_set,"uip_netif_addr_autoconf_set( uip_ipaddr_t * ipaddr , uip_lladdr_t * lladdr)",28,49,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,"uip_netif_addr_autoconf_set( uip_ipaddr_t * ipaddr , uip_lladdr_t * lladdr){
+  /* We consider only links with IEEE EUI-64 identifier or
+     IEEE 48-bit MAC addresses */
+#if (UIP_LLADDR_LEN == 8)
+  memcpy(ipaddr->u8 + 8, lladdr, UIP_LLADDR_LEN);
+  ipaddr->u8[8] ^= 0x02;
+#elif (UIP_LLADDR_LEN == 6)
+  memcpy(ipaddr->u8 + 8, lladdr, 3);
+  ipaddr->u8[11] = 0xff;
+  ipaddr->u8[12] = 0xfe;
+  memcpy(ipaddr->u8 + 13, lladdr + 3, 3);
+  ipaddr->u8[8] ^= 0x02;
+#else
+  /*
+    UIP_LOG(""CAN NOT BUIL INTERFACE IDENTIFIER"");
+    UIP_LOG(""THE STACK IS GOING TO SHUT DOWN"");
+    UIP_LOG(""THE HOST WILL BE UNREACHABLE"");
+  */
+  exit(-1);
+#endif
+}
+",uip_netif_addr_autoconf_set,,True,['CWE-120']
+31,3,11,95,uip_netif_addr_autoconf_set,"uip_netif_addr_autoconf_set( uip_ipaddr_t * ipaddr , uip_lladdr_t * lladdr)",28,49,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,"uip_netif_addr_autoconf_set( uip_ipaddr_t * ipaddr , uip_lladdr_t * lladdr){
+  /* We consider only links with IEEE EUI-64 identifier or
+     IEEE 48-bit MAC addresses */
+#if (UIP_LLADDR_LEN == 8)
+  memcpy(ipaddr->u8 + 8, lladdr, UIP_LLADDR_LEN);
+  ipaddr->u8[8] ^= 0x02;
+#elif (UIP_LLADDR_LEN == 6)
+  memcpy(ipaddr->u8 + 8, lladdr, 3);
+  ipaddr->u8[11] = 0xff;
+  ipaddr->u8[12] = 0xfe;
+  memcpy(ipaddr->u8 + 13, lladdr + 3, 3);
+  ipaddr->u8[8] ^= 0x02;
+#else
+  /*
+    UIP_LOG(""CAN NOT BUIL INTERFACE IDENTIFIER"");
+    UIP_LOG(""THE STACK IS GOING TO SHUT DOWN"");
+    UIP_LOG(""THE HOST WILL BE UNREACHABLE"");
+  */
+  exit(-1);
+#endif
+}
+",uip_netif_addr_autoconf_set,,True,['CWE-120']
+32,1,4,18,uip_netif_addr_add,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)",52,55,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)		   unsigned long vlifetime, uip_netif_type type)
+{
+}
+",uip_netif_addr_add,,False,benign
+33,1,4,18,uip_netif_addr_add,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)",52,55,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)		   unsigned long vlifetime, uip_netif_type type)
+{
+}
+",uip_netif_addr_add,,False,benign
+34,1,4,18,uip_netif_addr_add,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)",52,55,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)		   unsigned long vlifetime, uip_netif_type type)
+{
+}
+",uip_netif_addr_add,,False,benign
+35,1,4,18,uip_netif_addr_add,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)",52,55,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,"uip_netif_addr_add( uip_ipaddr_t * ipaddr , u8_t length , unsigned long vlifetime , uip_netif_type type)		   unsigned long vlifetime, uip_netif_type type)
+{
+}
+",uip_netif_addr_add,,False,benign
+36,5,24,124,chksum,"chksum( u16_t sum , const u8_t * data , u16_t len)",59,87,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,"chksum( u16_t sum , const u8_t * data , u16_t len){
+  u16_t t;
+  const u8_t *dataptr;
+  const u8_t *last_byte;
+
+  dataptr = data;
+  last_byte = data + len - 1;
+
+  while(dataptr < last_byte) {   /* At least two more bytes */
+    t = (dataptr[0] << 8) + dataptr[1];
+    sum += t;
+    if(sum < t) {
+      sum++;      /* carry */
+    }
+    dataptr += 2;
+  }
+
+  if(dataptr == last_byte) {
+    t = (dataptr[0] << 8) + 0;
+    sum += t;
+    if(sum < t) {
+      sum++;      /* carry */
+    }
+  }
+
+  /* Return sum in host byte order. */
+  return sum;
+}
+",chksum,,True,unknown_vul
+37,5,24,124,chksum,"chksum( u16_t sum , const u8_t * data , u16_t len)",59,87,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,"chksum( u16_t sum , const u8_t * data , u16_t len){
+  u16_t t;
+  const u8_t *dataptr;
+  const u8_t *last_byte;
+
+  dataptr = data;
+  last_byte = data + len - 1;
+
+  while(dataptr < last_byte) {   /* At least two more bytes */
+    t = (dataptr[0] << 8) + dataptr[1];
+    sum += t;
+    if(sum < t) {
+      sum++;      /* carry */
+    }
+    dataptr += 2;
+  }
+
+  if(dataptr == last_byte) {
+    t = (dataptr[0] << 8) + 0;
+    sum += t;
+    if(sum < t) {
+      sum++;      /* carry */
+    }
+  }
+
+  /* Return sum in host byte order. */
+  return sum;
+}
+",chksum,,True,unknown_vul
+38,5,24,124,chksum,"chksum( u16_t sum , const u8_t * data , u16_t len)",59,87,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,"chksum( u16_t sum , const u8_t * data , u16_t len){
+  u16_t t;
+  const u8_t *dataptr;
+  const u8_t *last_byte;
+
+  dataptr = data;
+  last_byte = data + len - 1;
+
+  while(dataptr < last_byte) {   /* At least two more bytes */
+    t = (dataptr[0] << 8) + dataptr[1];
+    sum += t;
+    if(sum < t) {
+      sum++;      /* carry */
+    }
+    dataptr += 2;
+  }
+
+  if(dataptr == last_byte) {
+    t = (dataptr[0] << 8) + 0;
+    sum += t;
+    if(sum < t) {
+      sum++;      /* carry */
+    }
+  }
+
+  /* Return sum in host byte order. */
+  return sum;
+}
+",chksum,,True,unknown_vul
+39,2,11,101,upper_layer_chksum,upper_layer_chksum( u8_t proto),90,108,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,"upper_layer_chksum( u8_t proto){
+  u16_t upper_layer_len;
+  u16_t sum;
+
+  upper_layer_len = (((u16_t)(UIP_IP_BUF->len[0]) << 8) + UIP_IP_BUF->len[1]) ;
+
+  /* First sum pseudoheader. */
+  /* IP protocol and length fields. This addition cannot carry. */
+  sum = upper_layer_len + proto;
+  /* Sum IP source and destination addresses. */
+  sum = chksum(sum, (u8_t *)&UIP_IP_BUF->srcipaddr, 2 * sizeof(uip_ipaddr_t));
+
+  /* Sum TCP header and data. */
+  sum = chksum(sum, &uip_buf[UIP_IPH_LEN + UIP_LLH_LEN],
+               upper_layer_len);
+
+  return (sum == 0) ? 0xffff : htons(sum);
+}
+",upper_layer_chksum,,True,unknown_vul
+40,1,4,12,uip_icmp6chksum,uip_icmp6chksum( void),112,115,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_wfvxe_ez_Flawfinder,"uip_icmp6chksum( void){
+  return upper_layer_chksum(UIP_PROTO_ICMP6);
+}
+",uip_icmp6chksum,,False,benign
+41,2,8,29,tcpip_output,tcpip_output( uip_lladdr_t * a),61,71,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"tcpip_output( uip_lladdr_t * a){
+  if(outputfunc != NULL) {
+    outputfunc(a);
+    /*    printf(""pppp o %u tx %u rx %u\n"", UIP_IP_BUF->proto,
+	   packetbuf_attr(PACKETBUF_ATTR_TRANSMIT_TIME),
+	   packetbuf_attr(PACKETBUF_ATTR_LISTEN_TIME));*/
+    leds_invert(LEDS_GREEN);
+  }
+  return 0;
+}
+",tcpip_output,,True,unknown_vul
+42,1,3,6,tcpip_ipv6_output,tcpip_ipv6_output( void),73,75,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"tcpip_ipv6_output( void){
+}
+",tcpip_ipv6_output,,False,benign
+43,1,4,18,tcpip_set_outputfunc,tcpip_set_outputfunc( uint8_t(*f)(uip_lladdr_t*)),77,80,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"tcpip_set_outputfunc( uint8_t(*f)(uip_lladdr_t*)){
+  outputfunc = f;
+}
+",tcpip_set_outputfunc,,True,unknown_vul
+44,1,5,18,PROCESS_THREAD,"PROCESS_THREAD( tcpip_process , ev , data)",81,85,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"PROCESS_THREAD( tcpip_process , ev , data){
+  PROCESS_BEGIN();
+  PROCESS_END();
+}
+",PROCESS_THREAD,,False,benign
+45,1,5,18,PROCESS_THREAD,"PROCESS_THREAD( tcpip_process , ev , data)",81,85,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"PROCESS_THREAD( tcpip_process , ev , data){
+  PROCESS_BEGIN();
+  PROCESS_END();
+}
+",PROCESS_THREAD,,False,benign
+46,1,5,18,PROCESS_THREAD,"PROCESS_THREAD( tcpip_process , ev , data)",81,85,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"PROCESS_THREAD( tcpip_process , ev , data){
+  PROCESS_BEGIN();
+  PROCESS_END();
+}
+",PROCESS_THREAD,,False,benign
+47,3,11,42,tcpip_input,tcpip_input( void),89,102,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"tcpip_input( void){
+  if(uip_len > 0) {
+    mac_LowpanToEthernet();
+    if(uip_len > 0) {
+      /*      printf(""pppp i %u tx %u rx %u\n"", UIP_IP_BUF->proto,
+	     packetbuf_attr(PACKETBUF_ATTR_TRANSMIT_TIME),
+	     packetbuf_attr(PACKETBUF_ATTR_LISTEN_TIME));*/
+      slip_write(uip_buf, uip_len);
+      leds_invert(LEDS_RED);
+      uip_len = 0;
+    }
+  }
+}
+",tcpip_input,,True,unknown_vul
+48,1,5,24,slip_tcpip_input,slip_tcpip_input( void),106,111,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"slip_tcpip_input( void){
+  /* TODO Should fix this in slip configuration */
+  memmove(uip_buf, &uip_buf[UIP_LLH_LEN], uip_len);
+  mac_ethernetToLowpan(uip_buf);
+}
+",slip_tcpip_input,,True,['CWE-788']
+49,1,4,11,slip_activity,slip_activity( void),114,117,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"slip_activity( void){
+  leds_invert(LEDS_BLUE);
+}
+",slip_activity,,False,benign
+50,1,11,53,PROCESS_THREAD,"PROCESS_THREAD( uip6_bridge , ev , data)",119,133,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"PROCESS_THREAD( uip6_bridge , ev , data){
+  PROCESS_BEGIN();
+
+  printf(""Setting up SLIP\n"");
+
+  mac_ethernetSetup();
+
+  slip_arch_init(BAUD2UBR(115200));
+  slip_set_input_callback(slip_activity);
+  slip_set_tcpip_input_callback(slip_tcpip_input);
+  process_start(&slip_process, NULL);
+
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,unknown_vul
+51,1,11,53,PROCESS_THREAD,"PROCESS_THREAD( uip6_bridge , ev , data)",119,133,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"PROCESS_THREAD( uip6_bridge , ev , data){
+  PROCESS_BEGIN();
+
+  printf(""Setting up SLIP\n"");
+
+  mac_ethernetSetup();
+
+  slip_arch_init(BAUD2UBR(115200));
+  slip_set_input_callback(slip_activity);
+  slip_set_tcpip_input_callback(slip_tcpip_input);
+  process_start(&slip_process, NULL);
+
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,unknown_vul
+52,1,11,53,PROCESS_THREAD,"PROCESS_THREAD( uip6_bridge , ev , data)",119,133,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"PROCESS_THREAD( uip6_bridge , ev , data){
+  PROCESS_BEGIN();
+
+  printf(""Setting up SLIP\n"");
+
+  mac_ethernetSetup();
+
+  slip_arch_init(BAUD2UBR(115200));
+  slip_set_input_callback(slip_activity);
+  slip_set_tcpip_input_callback(slip_tcpip_input);
+  process_start(&slip_process, NULL);
+
+  PROCESS_END();
+}
+",PROCESS_THREAD,,True,unknown_vul
+53,3,15,62,putchar,putchar( int c),136,158,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_i3kefwmx_Flawfinder,"putchar( int c){
+#define SLIP_END     0300
+  static char debug_frame = 0;
+
+  if(!debug_frame) {		/* Start of debug output */
+    slip_arch_writeb(SLIP_END);
+    slip_arch_writeb('\r');	/* Type debug line == '\r' */
+    debug_frame = 1;
+  }
+
+  slip_arch_writeb((char)c);
+
+  /*
+   * Line buffered output, a newline marks the end of debug output and
+   * implicitly flushes debug output.
+   */
+  if(c == '\n') {
+    slip_arch_writeb(SLIP_END);
+    debug_frame = 0;
+  }
+  return c;
+}
+",putchar,,True,unknown_vul
+54,1,12,50,usage,usage( int result),40,51,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_88m0j1cc_Flawfinder,"usage( int result){
+  printf(""Usage: serialdump [-x] [-s[on]] [-i] [-bSPEED] [SERIALDEVICE]\n"");
+  printf(""       -x for hexadecimal output\n"");
+  printf(""       -i for decimal output\n"");
+  printf(""       -s for automatic SLIP mode\n"");
+  printf(""       -so for SLIP only mode (all data is SLIP packets)\n"");
+  printf(""       -sn to hide SLIP packages\n"");
+  printf(""       -T[format] to add time for each text line\n"");
+  printf(""         (see man page for strftime() for format description)\n"");
+  return result;
+}
+",usage,,False,benign
+55,8,25,164,print_hex_line,"print_hex_line( unsigned char * prefix , unsigned char * outbuf , int index)",54,79,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_88m0j1cc_Flawfinder,"print_hex_line( unsigned char * prefix , unsigned char * outbuf , int index){
+  int i;
+
+  printf(""\r%s"", prefix);
+  for(i = 0; i < index; i++) {
+    if((i % 4) == 0) {
+      printf("" "");
+    }
+    printf(""%02X"", outbuf[i] & 0xFF);
+  }
+  printf(""  "");
+  for(i = index; i < HCOLS; i++) {
+    if((i % 4) == 0) {
+      printf("" "");
+    }
+    printf(""  "");
+  }
+  for(i = 0; i < index; i++) {
+    if(outbuf[i] < 30 || outbuf[i] > 126) {
+      printf(""."");
+    } else {
+      printf(""%c"", outbuf[i]);
+    }
+  }
+}
+",print_hex_line,,True,unknown_vul
+56,8,25,164,print_hex_line,"print_hex_line( unsigned char * prefix , unsigned char * outbuf , int index)",54,79,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_88m0j1cc_Flawfinder,"print_hex_line( unsigned char * prefix , unsigned char * outbuf , int index){
+  int i;
+
+  printf(""\r%s"", prefix);
+  for(i = 0; i < index; i++) {
+    if((i % 4) == 0) {
+      printf("" "");
+    }
+    printf(""%02X"", outbuf[i] & 0xFF);
+  }
+  printf(""  "");
+  for(i = index; i < HCOLS; i++) {
+    if((i % 4) == 0) {
+      printf("" "");
+    }
+    printf(""  "");
+  }
+  for(i = 0; i < index; i++) {
+    if(outbuf[i] < 30 || outbuf[i] > 126) {
+      printf(""."");
+    } else {
+      printf(""%c"", outbuf[i]);
+    }
+  }
+}
+",print_hex_line,,True,unknown_vul
+57,8,25,164,print_hex_line,"print_hex_line( unsigned char * prefix , unsigned char * outbuf , int index)",54,79,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_88m0j1cc_Flawfinder,"print_hex_line( unsigned char * prefix , unsigned char * outbuf , int index){
+  int i;
+
+  printf(""\r%s"", prefix);
+  for(i = 0; i < index; i++) {
+    if((i % 4) == 0) {
+      printf("" "");
+    }
+    printf(""%02X"", outbuf[i] & 0xFF);
+  }
+  printf(""  "");
+  for(i = index; i < HCOLS; i++) {
+    if((i % 4) == 0) {
+      printf("" "");
+    }
+    printf(""  "");
+  }
+  for(i = 0; i < index; i++) {
+    if(outbuf[i] < 30 || outbuf[i] > 126) {
+      printf(""."");
+    } else {
+      printf(""%c"", outbuf[i]);
+    }
+  }
+}
+",print_hex_line,,True,unknown_vul
+58,59,241,1355,main,"main( int argc , char ** argv)",81,368,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_88m0j1cc_Flawfinder,"main( int argc , char ** argv){
+  struct termios options;
+  fd_set mask, smask;
+  int fd;
+  speed_t speed = BAUDRATE;
+  char *speedname = BAUDRATE_S;
+  char *device = MODEMDEVICE;
+  char *timeformat = NULL;
+  unsigned char buf[BUFSIZE], outbuf[HCOLS];
+  unsigned char mode = MODE_START_TEXT;
+  int nfound, flags = 0;
+  unsigned char lastc = '\0';
+
+  int index = 1;
+  while (index < argc) {
+    if (argv[index][0] == '-') {
+      switch(argv[index][1]) {
+      case 'b':
+	/* set speed */
+	if (strcmp(&argv[index][2], ""38400"") == 0) {
+	  speed = B38400;
+	  speedname = ""38400"";
+	} else if (strcmp(&argv[index][2], ""19200"") == 0) {
+	  speed = B19200;
+	  speedname = ""19200"";
+	} else if (strcmp(&argv[index][2], ""57600"") == 0) {
+	  speed = B57600;
+	  speedname = ""57600"";
+	} else if (strcmp(&argv[index][2], ""115200"") == 0) {
+	  speed = B115200;
+	  speedname = ""115200"";
+	} else {
+	  fprintf(stderr, ""unsupported speed: %s\n"", &argv[index][2]);
+	  return usage(1);
+	}
+	break;
+      case 'x':
+	mode = MODE_HEX;
+	break;
+      case 'i':
+	mode = MODE_INT;
+	break;
+      case 's':
+	switch(argv[index][2]) {
+	case 'n':
+	  mode = MODE_SLIP_HIDE;
+	  break;
+	case 'o':
+	  mode = MODE_SLIP;
+	  break;
+	default:
+	  mode = MODE_SLIP_AUTO;
+	  break;
+	}
+	break;
+      case 'T':
+	if(strlen(&argv[index][2]) == 0) {
+	  timeformat = ""%Y-%m-%d %H:%M:%S"";
+	} else {
+	  timeformat = &argv[index][2];
+	}
+	mode = MODE_START_DATE;
+	break;
+      case 'h':
+	return usage(0);
+      default:
+	fprintf(stderr, ""unknown option '%c'\n"", argv[index][1]);
+	return usage(1);
+      }
+      index++;
+    } else {
+      device = argv[index++];
+      if (index < argc) {
+	fprintf(stderr, ""too many arguments\n"");
+	return usage(1);
+      }
+    }
+  }
+  fprintf(stderr, ""connecting to %s (%s)"", device, speedname);
+
+  fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY | O_DIRECT | O_SYNC );
+  if (fd <0) {
+    fprintf(stderr, ""\n"");
+    perror(device);
+    exit(-1);
+  }
+  fprintf(stderr, "" [OK]\n"");
+
+  if (fcntl(fd, F_SETFL, 0) < 0) {
+    perror(""could not set fcntl"");
+    exit(-1);
+  }
+
+  if (tcgetattr(fd, &options) < 0) {
+    perror(""could not get options"");
+    exit(-1);
+  }
+/*   fprintf(stderr, ""serial options set\n""); */
+  cfsetispeed(&options, speed);
+  cfsetospeed(&options, speed);
+  /* Enable the receiver and set local mode */
+  options.c_cflag |= (CLOCAL | CREAD);
+  /* Mask the character size bits and turn off (odd) parity */
+  options.c_cflag &= ~(CSIZE|PARENB|PARODD);
+  /* Select 8 data bits */
+  options.c_cflag |= CS8;
+
+  /* Raw input */
+  options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+  /* Raw output */
+  options.c_oflag &= ~OPOST;
+
+  if (tcsetattr(fd, TCSANOW, &options) < 0) {
+    perror(""could not set options"");
+    exit(-1);
+  }
+
+  /* Make read() return immediately */
+/*    if (fcntl(fd, F_SETFL, FNDELAY) < 0) { */
+/*      perror(""\ncould not set fcntl""); */
+/*      exit(-1); */
+/*    } */
+
+  FD_ZERO(&mask);
+  FD_SET(fd, &mask);
+  FD_SET(fileno(stdin), &mask);
+
+  index = 0;
+  for (;;) {
+    smask = mask;
+    nfound = select(FD_SETSIZE, &smask, (fd_set *) 0, (fd_set *) 0,
+		    (struct timeval *) 0);
+    if(nfound < 0) {
+      if (errno == EINTR) {
+	fprintf(stderr, ""interrupted system call\n"");
+	continue;
+      }
+      /* something is very wrong! */
+      perror(""select"");
+      exit(1);
+    }
+
+    if(FD_ISSET(fileno(stdin), &smask)) {
+      /* data from standard in */
+      int n = read(fileno(stdin), buf, sizeof(buf));
+      if (n < 0) {
+	perror(""could not read"");
+	exit(-1);
+      } else if (n > 0) {
+	/* because commands might need parameters, lines needs to be
+	   separated which means the terminating LF must be sent */
+/* 	while(n > 0 && buf[n - 1] < 32) { */
+/* 	  n--; */
+/* 	} */
+	if(n > 0) {
+	  int i;
+	  /*	  fprintf(stderr, ""SEND %d bytes\n"", n);*/
+	  /* write slowly */
+	  for (i = 0; i < n; i++) {
+	    if (write(fd, &buf[i], 1) <= 0) {
+	      perror(""write"");
+	      exit(1);
+	    } else {
+	      fflush(NULL);
+	      usleep(6000);
+	    }
+	  }
+	}
+      } else {
+	/* End of input, exit. */
+	exit(0);
+      }
+    }
+
+    if(FD_ISSET(fd, &smask)) {
+      int i, j, n = read(fd, buf, sizeof(buf));
+      if (n < 0) {
+	perror(""could not read"");
+	exit(-1);
+      }
+
+      for(i = 0; i < n; i++) {
+	switch(mode) {
+	case MODE_START_TEXT:
+	case MODE_TEXT:
+	  printf(""%c"", buf[i]);
+	  break;
+	case MODE_START_DATE: {
+	  time_t t;
+	  t = time(&t);
+	  strftime(outbuf, HCOLS, timeformat, localtime(&t));
+	  printf(""%s|"", outbuf);
+	  mode = MODE_DATE;
+	}
+	  /* continue into the MODE_DATE */
+	case MODE_DATE:
+	  printf(""%c"", buf[i]);
+	  if(buf[i] == '\n') {
+	    mode = MODE_START_DATE;
+	  }
+	  break;
+	case MODE_INT:
+	  printf(""%03d "", buf[i]);
+	  if(++index >= ICOLS) {
+	    index = 0;
+	    printf(""\n"");
+	  }
+	  break;
+	case MODE_HEX:
+	  rxbuf[index++] = buf[i];
+	  if(index >= HCOLS) {
+	    print_hex_line("""", rxbuf, index);
+	    index = 0;
+	    printf(""\n"");
+	  }
+	  break;
+
+	case MODE_SLIP_AUTO:
+	case MODE_SLIP_HIDE:
+	  if(!flags && (buf[i] != SLIP_END)) {
+	    /* Not a SLIP packet? */
+	    printf(""%c"", buf[i]);
+	    break;
+	  }
+	  /* continue to slip only mode */
+	case MODE_SLIP:
+	  switch(buf[i]) {
+	  case SLIP_ESC:
+	    lastc = SLIP_ESC;
+	    break;
+
+	  case SLIP_END:
+	    if(index > 0) {
+	      if(flags != 2 && mode != MODE_SLIP_HIDE) {
+		/* not overflowed: show packet */
+		print_hex_line(""SLIP: "", rxbuf,
+			       index > HCOLS ? HCOLS : index);
+		printf(""\n"");
+	      }
+	      lastc = '\0';
+	      index = 0;
+	      flags = 0;
+	    } else {
+	      flags = !flags;
+	    }
+	    break;
+
+	  default:
+	    if(lastc == SLIP_ESC) {
+	      lastc = '\0';
+
+	      /* Previous read byte was an escape byte, so this byte will be
+		 interpreted differently from others. */
+	      switch(buf[i]) {
+	      case SLIP_ESC_END:
+		buf[i] = SLIP_END;
+		break;
+	      case SLIP_ESC_ESC:
+		buf[i] = SLIP_ESC;
+		break;
+	      }
+	    }
+
+	    rxbuf[index++] = buf[i];
+	    if(index >= sizeof(rxbuf)) {
+	      fprintf(stderr, ""**** slip overflow\n"");
 	      index = 0;
 	      flags = 2;
 	    }
@@ -52,6 +2924,303 @@
       }
 
       /* after processing for some output modes */
-",[],False
-27,8,25,164,print_hex_line,"print_hex_line( unsigned char * prefix , unsigned char * outbuf , int index)",54,79,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_y41tn6w__Flawfinder,0,"print_hex_line( unsigned char * prefix , unsigned char * outbuf , int index)",[],False
-28,59,241,1355,main,"main( int argc , char ** argv)",81,368,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_y41tn6w__Flawfinder,0,"main( int argc , char ** argv)","[('CWE-120, CWE-20', '      int i, j, n = read(fd, buf, sizeof(buf));'), ('CWE-362', '  fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY | O_DIRECT | O_SYNC );'), ('CWE-120, CWE-20', '      int n = read(fileno(stdin), buf, sizeof(buf));'), ('CWE-126', '\tif(strlen(&argv[index][2]) == 0) {'), ('CWE-676', '\t      usleep(6000);'), ('CWE-119!/CWE-120', '  unsigned char buf[BUFSIZE], outbuf[HCOLS];')]",True
+      if(index > 0) {
+	switch(mode) {
+	case MODE_HEX:
+	  print_hex_line("""", rxbuf, index);
+	  break;
+	}
+      }
+      fflush(stdout);
+    }
+  }
+}
+",main,,True,"[nan, 'CWE-788', 'CWE-685', 'CWE-119!/CWE-120', 'CWE-126', 'CWE-362', 'CWE-120, CWE-20', 'CWE-676']"
+59,59,241,1355,main,"main( int argc , char ** argv)",81,368,/var/folders/p_/9ryggq9s67zbhxhzlms6wmzw0000gn/T/Filename_88m0j1cc_Flawfinder,"main( int argc , char ** argv){
+  struct termios options;
+  fd_set mask, smask;
+  int fd;
+  speed_t speed = BAUDRATE;
+  char *speedname = BAUDRATE_S;
+  char *device = MODEMDEVICE;
+  char *timeformat = NULL;
+  unsigned char buf[BUFSIZE], outbuf[HCOLS];
+  unsigned char mode = MODE_START_TEXT;
+  int nfound, flags = 0;
+  unsigned char lastc = '\0';
+
+  int index = 1;
+  while (index < argc) {
+    if (argv[index][0] == '-') {
+      switch(argv[index][1]) {
+      case 'b':
+	/* set speed */
+	if (strcmp(&argv[index][2], ""38400"") == 0) {
+	  speed = B38400;
+	  speedname = ""38400"";
+	} else if (strcmp(&argv[index][2], ""19200"") == 0) {
+	  speed = B19200;
+	  speedname = ""19200"";
+	} else if (strcmp(&argv[index][2], ""57600"") == 0) {
+	  speed = B57600;
+	  speedname = ""57600"";
+	} else if (strcmp(&argv[index][2], ""115200"") == 0) {
+	  speed = B115200;
+	  speedname = ""115200"";
+	} else {
+	  fprintf(stderr, ""unsupported speed: %s\n"", &argv[index][2]);
+	  return usage(1);
+	}
+	break;
+      case 'x':
+	mode = MODE_HEX;
+	break;
+      case 'i':
+	mode = MODE_INT;
+	break;
+      case 's':
+	switch(argv[index][2]) {
+	case 'n':
+	  mode = MODE_SLIP_HIDE;
+	  break;
+	case 'o':
+	  mode = MODE_SLIP;
+	  break;
+	default:
+	  mode = MODE_SLIP_AUTO;
+	  break;
+	}
+	break;
+      case 'T':
+	if(strlen(&argv[index][2]) == 0) {
+	  timeformat = ""%Y-%m-%d %H:%M:%S"";
+	} else {
+	  timeformat = &argv[index][2];
+	}
+	mode = MODE_START_DATE;
+	break;
+      case 'h':
+	return usage(0);
+      default:
+	fprintf(stderr, ""unknown option '%c'\n"", argv[index][1]);
+	return usage(1);
+      }
+      index++;
+    } else {
+      device = argv[index++];
+      if (index < argc) {
+	fprintf(stderr, ""too many arguments\n"");
+	return usage(1);
+      }
+    }
+  }
+  fprintf(stderr, ""connecting to %s (%s)"", device, speedname);
+
+  fd = open(device, O_RDWR | O_NOCTTY | O_NDELAY | O_DIRECT | O_SYNC );
+  if (fd <0) {
+    fprintf(stderr, ""\n"");
+    perror(device);
+    exit(-1);
+  }
+  fprintf(stderr, "" [OK]\n"");
+
+  if (fcntl(fd, F_SETFL, 0) < 0) {
+    perror(""could not set fcntl"");
+    exit(-1);
+  }
+
+  if (tcgetattr(fd, &options) < 0) {
+    perror(""could not get options"");
+    exit(-1);
+  }
+/*   fprintf(stderr, ""serial options set\n""); */
+  cfsetispeed(&options, speed);
+  cfsetospeed(&options, speed);
+  /* Enable the receiver and set local mode */
+  options.c_cflag |= (CLOCAL | CREAD);
+  /* Mask the character size bits and turn off (odd) parity */
+  options.c_cflag &= ~(CSIZE|PARENB|PARODD);
+  /* Select 8 data bits */
+  options.c_cflag |= CS8;
+
+  /* Raw input */
+  options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+  /* Raw output */
+  options.c_oflag &= ~OPOST;
+
+  if (tcsetattr(fd, TCSANOW, &options) < 0) {
+    perror(""could not set options"");
+    exit(-1);
+  }
+
+  /* Make read() return immediately */
+/*    if (fcntl(fd, F_SETFL, FNDELAY) < 0) { */
+/*      perror(""\ncould not set fcntl""); */
+/*      exit(-1); */
+/*    } */
+
+  FD_ZERO(&mask);
+  FD_SET(fd, &mask);
+  FD_SET(fileno(stdin), &mask);
+
+  index = 0;
+  for (;;) {
+    smask = mask;
+    nfound = select(FD_SETSIZE, &smask, (fd_set *) 0, (fd_set *) 0,
+		    (struct timeval *) 0);
+    if(nfound < 0) {
+      if (errno == EINTR) {
+	fprintf(stderr, ""interrupted system call\n"");
+	continue;
+      }
+      /* something is very wrong! */
+      perror(""select"");
+      exit(1);
+    }
+
+    if(FD_ISSET(fileno(stdin), &smask)) {
+      /* data from standard in */
+      int n = read(fileno(stdin), buf, sizeof(buf));
+      if (n < 0) {
+	perror(""could not read"");
+	exit(-1);
+      } else if (n > 0) {
+	/* because commands might need parameters, lines needs to be
+	   separated which means the terminating LF must be sent */
+/* 	while(n > 0 && buf[n - 1] < 32) { */
+/* 	  n--; */
+/* 	} */
+	if(n > 0) {
+	  int i;
+	  /*	  fprintf(stderr, ""SEND %d bytes\n"", n);*/
+	  /* write slowly */
+	  for (i = 0; i < n; i++) {
+	    if (write(fd, &buf[i], 1) <= 0) {
+	      perror(""write"");
+	      exit(1);
+	    } else {
+	      fflush(NULL);
+	      usleep(6000);
+	    }
+	  }
+	}
+      } else {
+	/* End of input, exit. */
+	exit(0);
+      }
+    }
+
+    if(FD_ISSET(fd, &smask)) {
+      int i, j, n = read(fd, buf, sizeof(buf));
+      if (n < 0) {
+	perror(""could not read"");
+	exit(-1);
+      }
+
+      for(i = 0; i < n; i++) {
+	switch(mode) {
+	case MODE_START_TEXT:
+	case MODE_TEXT:
+	  printf(""%c"", buf[i]);
+	  break;
+	case MODE_START_DATE: {
+	  time_t t;
+	  t = time(&t);
+	  strftime(outbuf, HCOLS, timeformat, localtime(&t));
+	  printf(""%s|"", outbuf);
+	  mode = MODE_DATE;
+	}
+	  /* continue into the MODE_DATE */
+	case MODE_DATE:
+	  printf(""%c"", buf[i]);
+	  if(buf[i] == '\n') {
+	    mode = MODE_START_DATE;
+	  }
+	  break;
+	case MODE_INT:
+	  printf(""%03d "", buf[i]);
+	  if(++index >= ICOLS) {
+	    index = 0;
+	    printf(""\n"");
+	  }
+	  break;
+	case MODE_HEX:
+	  rxbuf[index++] = buf[i];
+	  if(index >= HCOLS) {
+	    print_hex_line("""", rxbuf, index);
+	    index = 0;
+	    printf(""\n"");
+	  }
+	  break;
+
+	case MODE_SLIP_AUTO:
+	case MODE_SLIP_HIDE:
+	  if(!flags && (buf[i] != SLIP_END)) {
+	    /* Not a SLIP packet? */
+	    printf(""%c"", buf[i]);
+	    break;
+	  }
+	  /* continue to slip only mode */
+	case MODE_SLIP:
+	  switch(buf[i]) {
+	  case SLIP_ESC:
+	    lastc = SLIP_ESC;
+	    break;
+
+	  case SLIP_END:
+	    if(index > 0) {
+	      if(flags != 2 && mode != MODE_SLIP_HIDE) {
+		/* not overflowed: show packet */
+		print_hex_line(""SLIP: "", rxbuf,
+			       index > HCOLS ? HCOLS : index);
+		printf(""\n"");
+	      }
+	      lastc = '\0';
+	      index = 0;
+	      flags = 0;
+	    } else {
+	      flags = !flags;
+	    }
+	    break;
+
+	  default:
+	    if(lastc == SLIP_ESC) {
+	      lastc = '\0';
+
+	      /* Previous read byte was an escape byte, so this byte will be
+		 interpreted differently from others. */
+	      switch(buf[i]) {
+	      case SLIP_ESC_END:
+		buf[i] = SLIP_END;
+		break;
+	      case SLIP_ESC_ESC:
+		buf[i] = SLIP_ESC;
+		break;
+	      }
+	    }
+
+	    rxbuf[index++] = buf[i];
+	    if(index >= sizeof(rxbuf)) {
+	      fprintf(stderr, ""**** slip overflow\n"");
+	      index = 0;
+	      flags = 2;
+	    }
+	    break;
+	  }
+	  break;
+	}
+      }
+
+      /* after processing for some output modes */
+      if(index > 0) {
+	switch(mode) {
+	case MODE_HEX:
+	  print_hex_line("""", rxbuf, index);
+	  break;
+	}
+      }
+      fflush(stdout);
+    }
+  }
+}
+",main,,True,"[nan, 'CWE-788', 'CWE-685', 'CWE-119!/CWE-120', 'CWE-126', 'CWE-362', 'CWE-120, CWE-20', 'CWE-676']"

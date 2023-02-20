@@ -65,7 +65,7 @@ def apply_cppcheck(file_or_dir, xmlfile="output.xml"):
     !cppcheck --template="{file}; {line}; {severity}; {message}; {code}"
     --template-location=" {file};{line}; {info};{code}\n" <path> 2> err.txt
     """
-    cmd = ["cppcheck " + file_or_dir + " --xml 2> + " + xmlfile]
+    cmd = ["cppcheck -a -f " + file_or_dir + " --xml 2> + " + xmlfile]
     process = sub.Popen(cmd, shell=True, stdout=sub.PIPE)
     output = process.stdout.read()
     # TODO: try not to create output.xml file instead use BytesIO.
@@ -84,7 +84,6 @@ def apply_flawfinder(file_or_dir):
         cmd = "flawfinder --csv --inputs " + file_or_dir
     else:
         print("Please provide a valid project dir/file/link!")
-    print(cmd)
     process = sub.Popen(
         cmd,
         shell=True,
@@ -135,11 +134,11 @@ def apply_rats(file_or_dir, xmlfile="output.xml"):
 
     # RATS tool does not produce results with CWE type.
     df["cwe"] = "unknown_vul"
-    df["line"] = df.line.astype(int)
+    # df["line"] = df.line.astype(int)
     return df
 
 
 if __name__ == "__main__":
     chk_dir = "data/projects/contiki-2.4/apps/"
     df_flaw = apply_cppcheck(chk_dir)
-    print(project_flaws(df_flaw))
+    print(df_flaw)
