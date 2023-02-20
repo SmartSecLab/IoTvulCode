@@ -19,9 +19,12 @@ from io import BytesIO, StringIO
 import numpy as np
 import itertools
 import tempfile
+import yaml
+
 from zipfile import ZipFile
 from guesslang import Guess
 from pathlib import Path
+
 
 # user defined
 from src.tools import apply_flawfinder, apply_cppcheck, apply_rats
@@ -297,7 +300,8 @@ def urlzip2df(url):
         df_flaw_prj = pd.DataFrame()
         df_metrics_prj = pd.DataFrame()
 
-        for file in selected_files:
+        # iterate on every unique file
+        for file in list(set(selected_files)):
             df_flaw_file, df_metrics_file = compose_file_flaws(file, zipobj)
             df_flaw_prj = pd.concat([df_flaw_prj, df_flaw_file])
             df_metrics_prj = pd.concat([df_metrics_prj, df_metrics_file])
@@ -338,13 +342,18 @@ def iterate_projects(prj_dir_urls):
 
 if __name__ == "__main__":
     # The list of the URL links of the project zip files.
-    # TODO create a file of list of projects
-    prj_dir_urls = [
-        "data/projects/contiki-2.4/apps/webserver/",
-        "https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download",
-    ]
-    df_flaw, df_metrics = iterate_projects(prj_dir_urls)
+    config = yaml.safe_load(open("ext_projects.yaml"))
+    projects = config["projects"]
+
+    df_flaw, df_metrics = iterate_projects(projects)
     print("=" * 50)
 
-    df_flaw.to_csv("data/contiki24_flaw.csv")
-    df_metrics.to_csv("data/contiki24_metrics.csv")
+    flaw_file = config["files"]["save_flaw"]
+    metric_file = config["files"]["save_metrics"]
+
+    df_flaw.to_csv(flaw_file)
+    df_metrics.to_csv(metric_file)
+
+    print(f"The flaw data output is saved at {flaw_file}")
+    print(f"The fun metric data is saved at {metric_file}")
+    print("=" * 50)

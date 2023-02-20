@@ -1,0 +1,8 @@
+# config file for data extraction from different IoT projects:
+projects: [
+  "data/projects/contiki-2.4/apps/webserver/",
+  "https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download",
+  ]
+files:
+  save_flaw: "data/contiki24_flaw.csv"
+  save_metrics: "data/contiki24_metrics.csv"
