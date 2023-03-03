@@ -58,9 +58,10 @@ def load_data(data_csv):
 
 def tokenize_data(df):
     """Dataset tokenization"""
-    code_snippet_int_tokens = [[
-        printable.index(x) + 1 for x in code_snippet if x in printable
-    ] for code_snippet in df.code]
+    code_snippet_int_tokens = [
+        [printable.index(x) + 1 for x in code_snippet if x in printable]
+        for code_snippet in df.code
+    ]
     # X = sequence.pad_sequences(code_snippet_int_tokens, maxlen=max_len) # original
     X = pad_sequences(code_snippet_int_tokens, maxlen=max_len)
     target = np.array(df.isMalicious)
@@ -116,11 +117,11 @@ def load_model(fileModelJSON, fileWeights):
 if __name__ == "__main__":
     # Command Line Arguments:
     parser = argparse.ArgumentParser(
-        description="AI-enabled IoT Cybersecurity Approach for Vulnerability Detection...")
+        description="AI-enabled IoT Cybersecurity Approach for Vulnerability Detection..."
+    )
     parser.add_argument(
-        "--model",
-        type=str,
-        help="Name of the model to train/test- RNN or CNN or RF")
+        "--model", type=str, help="Name of the model to train/test- RNN or CNN or RF"
+    )
     parser.add_argument("--data", type=str, help="Data file for train/test.")
     paras = parser.parse_args()
 
@@ -135,13 +136,16 @@ if __name__ == "__main__":
     CLASS_MODEL = config["model"]["name"]
     max_len = config["preprocess"]["max_len"]  # for pad_sequences
 
+    # Load input data
     df = load_data(data_csv=data_csv).reset_index(drop=True)
     X, target = tokenize_data(df)
 
     # Split the data set into training and test data
     X_train, X_test, y_train, y_test = model_selection.train_test_split(
-        X, target, test_size=test_size, random_state=seed)
+        X, target, test_size=test_size, random_state=seed
+    )
 
+    # Choose ML model
     mdl_obj = Classifier(config)
     if CLASS_MODEL == "RNN":
         model = mdl_obj.apply_RNN()
@@ -170,5 +174,4 @@ if __name__ == "__main__":
     # print('\nTesting Accuracy =', accuracy, '\n')
     plot_metrics(history)
 
-    print("\nFinal Cross-Validation Accuracy of RNN training model", accuracy,
-          "\n")
+    print("\nFinal Cross-Validation Accuracy of RNN training model", accuracy, "\n")

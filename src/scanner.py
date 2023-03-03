@@ -281,20 +281,18 @@ def retrieve_zip(url):
 
 def urlzip2df(url):
     """concatenate all the output dataframes of all the files"""
-    print("\n" + "-" * 40)
+    print("\n" + "-" * 50)
     zipobj = None
 
     if os.path.isdir(url):
-        print("Generating composite df of the project...\n", url)
+        print("Scanning project directory...\nProject: ", url)
         files = [str(f) for f in Path(url).rglob("*.*")]
         selected_files = [x for x in files if guess_pl(x) in pl_list]
     else:
-        print("Generating composite df of the project URL of zip-file ...\n ...", url)
+        print("Scanning project URL...\nProject: ", url)
         zipobj = retrieve_zip(url)
         files = zipobj.namelist()
         selected_files = [x for x in files if guess_pl(x, zipobj) in pl_list]
-
-    print("\n" + "-" * 20 + " Project Report " + "-" * 20)
 
     if selected_files:
         df_flaw_prj = pd.DataFrame()
@@ -309,10 +307,11 @@ def urlzip2df(url):
 
             prj_count = prj_count + 1
             if prj_count % 10 == 0:
-                print(f"Extracting #files: {prj_count} ....")
+                print(f"#Files: {prj_count}\n scanning for flaws....")
 
-        print("Shape of the flaws data in the project:", df_flaw_prj.shape)
-        print("Shape of the function level metrics in project:", df_metrics_prj.shape)
+        print("\n" + "-" * 10 + " Project Report " + "-" * 10)
+        print("Shape of the flaws data:", df_flaw_prj.shape)
+        print("Shape of the function level metrics:", df_metrics_prj.shape)
         return df_flaw_prj.reset_index(drop=True), df_metrics_prj.reset_index(drop=True)
     else:
         print(f"No file in the specified project  by the given PL: {pl_list}")
@@ -333,7 +332,7 @@ def iterate_projects(prj_dir_urls):
             print("non-zipped prj")
     print("-" * 40)
 
-    print("\n" + "=" * 20 + " Final Report " + "=" * 20)
+    print("\n\n" + "=" * 20 + " Final Composite Report " + "=" * 20)
     if len(df_flaw) > 0 and len(df_metrics) > 0:
         print("Shape of the flaw data of all the projects:", df_flaw.shape)
         print(
@@ -349,10 +348,19 @@ if __name__ == "__main__":
     # The list of the URL links of the project zip files.
     config = yaml.safe_load(open("ext_projects.yaml"))
 
-    df_flaw, df_metrics = iterate_projects(config["projects"])
-
     flaw_file = config["files"]["save_flaw"]
     metric_file = config["files"]["save_metrics"]
+    override = config["files"]["override"]
+
+    if not override:
+        if os.path.exists(flaw_file) or os.path.exists(metric_file):
+            print(
+                f"The flaw/metric data file you want to create already \
+                    exists: {flaw_file}/{metric_file}\n provide another filename"
+            )
+            exit(0)
+
+    df_flaw, df_metrics = iterate_projects(config["projects"])
 
     df_flaw.to_csv(flaw_file)
     df_metrics.to_csv(metric_file)
