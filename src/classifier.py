@@ -10,23 +10,28 @@ Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smar
 @Programmer: Guru Bhandari
 """
 
-import argparse
 import json
 import os
 import re
+import sys
 import warnings
 from pathlib import Path
 from string import printable
+from argparse import ArgumentParser
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import yaml
+
 from keras.utils import np_utils, pad_sequences
+
+# from keras_preprocessing.sequence import pad_sequences
+
 from sklearn import model_selection
 
-from source.models import Classifier
-from source.plot import plot_metrics
+from src.models import Classifier
+from src.plot import plot_metrics
 
 warnings.filterwarnings("ignore")
 
@@ -47,13 +52,12 @@ def load_data(data_csv):
     df = pd.read_csv(data_csv, encoding="unicode_escape")
     # Checking for duplicate rows or null values
     df = df.dropna().drop_duplicates().reset_index(drop=True)
-    print(f"\nShape of the dataset:")
-    print(df.shape)
-    print("Data Sample: \n")
-    print("*" * 50)
-    print(df.head(5))
-    print("*" * 50)
-    return df
+    print(f"\nShape of the input data: {df.shape}")
+    print("Samples:")
+    print("-" * 50)
+    print(df.head(3))
+    print("-" * 50)
+    return df.reset_index(drop=True)
 
 
 def tokenize_data(df):
@@ -65,28 +69,23 @@ def tokenize_data(df):
     # X = sequence.pad_sequences(code_snippet_int_tokens, maxlen=max_len) # original
     X = pad_sequences(code_snippet_int_tokens, maxlen=max_len)
     target = np.array(df.isMalicious)
-    print(
-        "Matrix dimensions of X: ",
-        X.shape,
-        "Vector dimension of target: ",
-        target.shape,
-    )
+    print(f"Matrix dimensions of X: {X.shape},\nVector dimension of y:{target.shape}")
     return X, target
 
 
 # Save model to disk
-def save_model(fileModelJSON, fileWeights):
+def save_model(model_JSON, file_weights):
     """Saving model to disk"""
-    print("Saving model to disk: ", fileModelJSON, "and", fileWeights)
+    print("Saving model to disk: ", model_JSON, "and", file_weights)
     # have h5py installed
-    if Path(fileModelJSON).is_file():
-        os.remove(fileModelJSON)
+    if Path(model_JSON).is_file():
+        os.remove(model_JSON)
     json_string = model.to_json()
-    with open(fileModelJSON, "w") as f:
+    with open(model_JSON, "w") as f:
         json.dump(json_string, f)
-    if Path(fileWeights).is_file():
-        os.remove(fileWeights)
-    model.save_weights(fileWeights)
+    if Path(file_weights).is_file():
+        os.remove(file_weights)
+    model.save_weights(file_weights)
 
 
 # Layer dimensions
@@ -104,24 +103,21 @@ def print_layers_dims(model):
 
 
 # Load model from disk
-def load_model(fileModelJSON, fileWeights):
-    # print("Saving model to disk: ",fileModelJSON, "and",fileWeights)
-    with open(fileModelJSON, "r") as f:
+def load_model(model_JSON, file_weights):
+    with open(model_JSON, "r") as f:
         model_json = json.load(f)
         model = model_from_json(model_json)
 
-    model.load_weights(fileWeights)
+    model.load_weights(file_weights)
     return model
 
 
 if __name__ == "__main__":
     # Command Line Arguments:
-    parser = argparse.ArgumentParser(
+    parser = ArgumentParser(
         description="AI-enabled IoT Cybersecurity Approach for Vulnerability Detection..."
     )
-    parser.add_argument(
-        "--model", type=str, help="Name of the model to train/test- RNN or CNN or RF"
-    )
+    parser.add_argument("--model", type=str, help="Name of the ML model to train/test.")
     parser.add_argument("--data", type=str, help="Data file for train/test.")
     paras = parser.parse_args()
 
@@ -133,11 +129,16 @@ if __name__ == "__main__":
     data_file = config["data_file"]
     epochs = config["dnn"]["epochs"]
     batch_size = config["dnn"]["batch"]
-    CLASS_MODEL = config["model"]["name"]
+    CLASS_MODEL = paras.model if paras.model else config["model"]["name"]
     max_len = config["preprocess"]["max_len"]  # for pad_sequences
 
+    # Display settings
+    print("\n\n" + "=" * 25 + " " + CLASS_MODEL + " Model Training " + "=" * 25)
+    print(f"Configurations: \n {config}")
+    print("-" * 50)
+
     # Load input data
-    df = load_data(data_csv=data_csv).reset_index(drop=True)
+    df = load_data(data_csv=data_csv)
     X, target = tokenize_data(df)
 
     # Split the data set into training and test data
@@ -161,17 +162,20 @@ if __name__ == "__main__":
         print("Invalid Model! Please select any valid model!")
         exit(1)
 
-    # Fit model and Cross-Validation
-    history = model.fit(
-        X_train,
-        y_train,
-        epochs=epochs,
-        batch_size=batch_size,
-        validation_data=(X_test, y_test),
-    )
-    print(history)
-    loss, accuracy = model.evaluate(X_test, y_test, verbose=1)
-    # print('\nTesting Accuracy =', accuracy, '\n')
-    plot_metrics(history)
-
-    print("\nFinal Cross-Validation Accuracy of RNN training model", accuracy, "\n")
+    # Fitting model and Cross-Validation
+    if CLASS_MODEL == "RF":
+        # Evaluation of the training model
+        print("-" * 50)
+    else:
+        history = model.fit(
+            X_train,
+            y_train,
+            epochs=epochs,
+            batch_size=batch_size,
+            validation_data=(X_test, y_test),
+        )
+        # print(history)
+        loss, accuracy = model.evaluate(X_test, y_test, verbose=1)
+        # print('\nTesting Accuracy =', accuracy, '\n')
+        plot_metrics(history)
+        print("\nFinal Cross-Validation Accuracy of RNN training model", accuracy, "\n")

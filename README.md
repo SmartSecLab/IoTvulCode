@@ -2,7 +2,7 @@
 
 # Vulnerability detection in IoT operating systems and applications analyzing open-source code:
 
-In this study, we have presented IoT vulnerability data extraction tool and the machine learning methods to detect vulnerabilities in the C\C++ source code of IoT operating systems(OS) and applications.
+In this study, we have presented an IoT vulnerability data extraction tool and machine learning methods to detect vulnerabilities in the C\C++ source code of IoT operating systems(OS) and applications.
 The source code of various IoT OSs and applications was used to create a binary and multi-class labeled dataset including both vulnerable and benign samples.
 To make the dataset more generic to the common standard of the C\C++ source code, we have selected the IoT OS, and application if there is at least an entry of the project in the Common Vulnerability and Enumerations (CVE). 
 The types of vulnerabilities in the presented dataset are linked to the Common Weakness Enumeration (CWE) records. 
@@ -14,13 +14,13 @@ The proposed method for vulnerability data collection is as follows:
 ![framework](figure/framework.jpg?raw=true "The proposed framework for vulnerability data collection")
 
 
-## Method for IoT vulnerability detection:
+## ML method for IoT vulnerability detection:
 The novel vulnerability detection approach in IoT OSs and applications:
 
 ![framework](figure/MLframework.jpg?raw=true "The proposed method for vulnerability detection in IoT OSs and applications")
 
 
-## Query to search IoT related source-code OSs and applications in CVE records:
+## Query to search IoT-related source-code OSs and applications in CVE records:
 
 _IoT_  OR _Internet of Things_ OR _Raspberry Pi_ OR  _Jetson_ OR _Smart Grid_ OR _Smart Environments_ 
 OR _Arduino_ OR _Banana Pi_ OR _Zigbee_

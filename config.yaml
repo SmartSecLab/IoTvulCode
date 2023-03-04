@@ -10,13 +10,13 @@ preprocess:
   max_len: 150  # for pad_sequences 
   max_vocab_len: 150 
   # a single raw file or dir of all .csv files with path relative to data_dir
-  raw_data: raw/EdgeIIoTset.csv
-  processed_data: processed/EdgeIIoTset.csv   # relative to data_dir
+  raw_data: raw/IoTcode.csv
+  processed_data: processed/IoTcode.csv   # relative to data_dir
 
 model:    # settings for training and testing experiments
   seed: 30  # seed for reproduciability to generate same set of samples of data splits
   type: binary # binary or multiclass
-  name: multiDNN # RNN, CNN or RF - RandomForest
+  name: LSTM # RNN, CNN or RF - RandomForest
   k-fold: 20 # number of cross-validation folds
   save: True # save the trained model (True) or not (False)
   split_ratio: 0.30 # ratio of training and testing ratio
@@ -24,7 +24,7 @@ model:    # settings for training and testing experiments
                     # for tracking the experiments in neptune.ai, 
                     # If True, make sure you have correctly configured '.neptune_config.ini' file
 dnn:
-  epochs: 200  # default iDetect 800
+  epochs: 2  # default iDetect 800
   batch: 64
   input_length: 150
   input_dim: 150

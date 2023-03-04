@@ -25,9 +25,20 @@ import tensorflow as tf
 from keras import backend as K
 from keras import regularizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-from keras.layers import (ELU, LSTM, BatchNormalization, Bidirectional,
-                          Convolution1D, Convolution2D, Embedding, Input,
-                          MaxPooling1D, MaxPooling2D, SimpleRNN, concatenate)
+from keras.layers import (
+    ELU,
+    LSTM,
+    BatchNormalization,
+    Bidirectional,
+    Convolution1D,
+    Convolution2D,
+    Embedding,
+    Input,
+    MaxPooling1D,
+    MaxPooling2D,
+    SimpleRNN,
+    concatenate,
+)
 from keras.layers.core import Activation, Dense, Dropout, Flatten, Lambda
 from keras.models import Model, Sequential, load_model, model_from_json
 from keras.optimizers import SGD, Adam, RMSprop
@@ -48,7 +59,6 @@ warnings.filterwarnings("ignore")
 
 
 class Classifier:
-
     def __init__(self, config):
 
         # function arguments:
@@ -82,6 +92,21 @@ class Classifier:
             # km.average_recall(),
         ]
         print(self.metrics)
+        print("-" * 50)
+
+    def optimize_model(self, model):
+        """apply optimizer"""
+        # model = Model(inputs=main_input, outputs=Emb_Layer)
+        optim = Adam(
+            lr=self.learn_rate,
+            beta_1=self.beta_1,
+            beta_2=self.beta_2,
+            epsilon=self.epsilon,
+            decay=self.decay,
+        )
+        model.compile(optimizer=optim, loss=self.loss, metrics=self.metrics)
+        print(f"\n {model.summary()}")
+        return model
 
     def apply_RNN(self):
         """
@@ -91,7 +116,7 @@ class Classifier:
         multiple replications without their distinct applications.
         """
         # Main Input
-        main_input = Input(shape=(self.max_len, ), dtype="int32")
+        main_input = Input(shape=(self.max_len,), dtype="int32")
 
         # Embedding Layers
         # Emb_Layer = Embedding(input_dim=150, output_dim=32, input_length=150,
@@ -101,32 +126,25 @@ class Classifier:
             output_dim=self.output_dim,
             input_length=self.input_length,
         )(main_input)
+
         Emb_Layer = Bidirectional(
             SimpleRNN(
                 self.input_dim,
                 return_sequences=False,
                 dropout=self.dropout,
                 recurrent_dropout=self.recur_dropout,
-            ))(Emb_Layer)
+            )
+        )(Emb_Layer)
         # <guru> I think the activation function should be 'sigmoid' here
         # for binary classification???
-        Emb_Layer = Dense(55,
-                          activation="softmax")(Emb_Layer)  # iDetech original
+        Emb_Layer = Dense(55, activation="softmax")(Emb_Layer)  # iDetech original
         # Emb_Layer = Dense(2, activation="sigmoid")(Emb_Layer)
 
-        # RNN Model Settings
+        # apply RNN model settings
         model = Model(inputs=main_input, outputs=Emb_Layer)
-        optim = Adam(
-            lr=self.learn_rate,
-            beta_1=self.beta_1,
-            beta_2=self.beta_2,
-            epsilon=self.epsilon,
-            decay=self.decay,
-        )
-        model.compile(optimizer=self.optim,
-                      loss=self.loss,
-                      metrics=self.metrics)
-        print(model.summary())
+
+        # apply optimizer
+        model = self.optimize_model(model)
         return model
 
     def apply_CNN(self):
@@ -135,9 +153,7 @@ class Classifier:
         Training Model 2 - 1D Convolutions and Fully Connected Layers
         """
         # Input
-        main_input = Input(shape=(self.max_len, ),
-                           dtype="int32",
-                           name="main_input")
+        main_input = Input(shape=(self.max_len,), dtype="int32", name="main_input")
 
         # Embedding layer
         # emb = Embedding(input_dim=max_vocab_len, output_dim=emb_dim, input_length=max_len,
@@ -146,7 +162,7 @@ class Classifier:
             input_dim=self.max_vocab_len,
             output_dim=self.emb_dim,
             input_length=self.max_len,
-        )(main_input)  #
+        )(main_input)
         emb = Dropout(0.25)(emb)
 
         def sum_1d(X):
@@ -156,12 +172,12 @@ class Classifier:
             # Conv layer
             # conv = Convolution1D(kernel_size=kernel_size, filters=filters, \
             #              border_mode='same')(emb)  # Original with tf1.5 now 'boarder_mode' is 'padding'
-            conv = Convolution1D(kernel_size=kernel_size,
-                                 filters=filters,
-                                 padding="same")(emb)
+            conv = Convolution1D(
+                kernel_size=kernel_size, filters=filters, padding="same"
+            )(emb)
             conv = ELU()(conv)
 
-            conv = Lambda(sum_1d, output_shape=(filters, ))(conv)
+            conv = Lambda(sum_1d, output_shape=(filters,))(conv)
             # conv = BatchNormalization(mode=0)(conv)
             conv = Dropout(0.5)(conv)
             return conv
@@ -202,31 +218,22 @@ class Classifier:
         else:
             model = Model(inputs=[main_input], outputs=[output])
 
-        # CNN Model Settings and define optimizer
-        model = Model(inputs=main_input, outputs=[output])
-        optim = Adam(
-            lr=self.learn_rate,
-            beta_1=self.beta_1,
-            beta_2=self.beta_2,
-            epsilon=self.epsilon,
-            decay=self.decay,
-        )
-        model.compile(optimizer=optim,
-                      loss=self.loss,
-                      metrics=self.metrics)
-        print(model.summary())
+        # # CNN Model Settings and define optimizer
+        model = Model(inputs=main_input, outputs=[Emb_Layer])
+
+        # apply optimizer
+        model = self.optimize_model(model)
         return model
-    
-    
+
     def apply_LSTM(self):
         """
         multi-layer DNN model for the training
         """
         model = Sequential()
         # First LSTM layer defining the input sequence length
-        model.add(LSTM(input_shape=(self.input_dim, 1),
-                    units=32,
-                    return_sequences=True))
+        model.add(
+            LSTM(input_shape=(self.input_dim, 1), units=32, return_sequences=True)
+        )
         model.add(Dropout(self.dropout))
 
         # Second LSTM layer with 128 units
@@ -236,94 +243,72 @@ class Classifier:
         # Third LSTM layer with 100 units
         model.add(LSTM(units=150, return_sequences=False))
         model.add(Dropout(self.dropout))
-        model.add(Dense(self.output_dim, activation='softmax'))
+        model.add(Dense(self.output_dim, activation="softmax"))
 
-        adam = Adam(
-            lr=self.learn_rate,
-            beta_1=self.beta_1,
-            beta_2=self.beta_2,
-            epsilon=self.epsilon,
-            decay=self.decay
-            )
-        model.compile(optimizer=self.optimizer,
-                      loss=self.loss,
-                      metrics=self.metrics)
-        print(model.summary())
+        # apply optimizer
+        model = self.optimize_model(model)
         return model
-
 
     def apply_multiDNN(self):
-        """ multi-layer DNN model for the training
-        """
+        """multi-layer DNN model for the training"""
         model = Sequential()
-        model.add(Dense(2000, activation='relu',input_dim=self.input_dim))
-        model.add(Dense(1500, activation='relu'))
+        model.add(Dense(2000, activation="relu", input_dim=self.input_dim))
+        model.add(Dense(1500, activation="relu"))
         model.add(Dropout(0.2))
-        model.add(Dense(800,activation='relu'))
+        model.add(Dense(800, activation="relu"))
         model.add(Dropout(0.2))
-        model.add(Dense(400,activation='relu'))
+        model.add(Dense(400, activation="relu"))
         model.add(Dropout(0.2))
-        model.add(Dense(150,activation='relu'))
+        model.add(Dense(150, activation="relu"))
         model.add(Dropout(0.2))
-        model.add(Dense(self.output_dim, activation='softmax'))
-        adam = Adam(
-            lr=self.learn_rate,
-            beta_1=self.beta_1,
-            beta_2=self.beta_2,
-            epsilon=self.epsilon,
-            decay=self.decay
-            )
-        model.compile(optimizer=self.optimizer,
-                      loss=self.loss,
-                      metrics=self.metrics)
-        print(model.summary())
-        print(model.summary())
+        model.add(Dense(self.output_dim, activation="softmax"))
+
+        # apply optimizer
+        model = optimize_model(self, model)
         return model
-    
 
-    def preprocess4RF(self, code_snippet):
-        """ Preprocessing data for Random Forest model training
-        """
-        # Cleaning-up
-        preprocess =  pd.Series(code_snippet).replace(r'\b([A-Za-z])\1+\b', '', regex=True)\
-                .replace(r'\b[A-Za-z]\b', '', regex=True)
-        transformer = FunctionTransformer(preprocess)
+    def apply_RF(self, df):
+        """Defining the Training Model Classifier for Binary Classification"""
 
+        code_col = df.code
+
+        def preprocess4RF(code_col):
+            """Cleaning-up"""
+            return (
+                pd.Series(code_col)
+                .replace(r"\b([A-Za-z])\1+\b", "", regex=True)
+                .replace(r"\b[A-Za-z]\b", "", regex=True)
+            )
+
+        transformer = FunctionTransformer(preprocess4RF)
         token_pattern = r"""([A-Za-z_]\w*\b|[!\#\$%\&\*\+:\-\./<=>\?@\\\^_\|\~]+|[ \t\(\),;\{\}\[\]"'`])"""
         vectorizer = TfidfVectorizer(token_pattern=token_pattern, max_features=3000)
-        return transformer, vectorizer
-        
-    
-    def apply_RF(self, df):
-        """ Defining the Training Model Classifier for Binary Classification
-        """
-        transformer, vectorizer = self.preprocess4RF(df.code)
+
         # Dataset split for training and testing.
         code_train, code_test, tag_train, tag_test = train_test_split(
-            df.code, df.isMalicious, test_size=0.15, shuffle=True)
+            df.code,
+            df.isMalicious,
+            test_size=0.15,
+            shuffle=True,  # TODO apply random_state instead shuffle=True for reproducibility
+        )
 
+        # Training Model Classifier for Multi-Class Classification
         clf = RandomForestClassifier(n_jobs=4)
 
-        pipe_RF = Pipeline([("preprocessing", transformer),
-                            ("vectorizer", vectorizer), ("clf", clf)])
+        model = Pipeline(
+            [("preprocessing", transformer), ("vectorizer", vectorizer), ("clf", clf)]
+        )
 
         # Setting of the best parameters
         best_params = {
             "clf__criterion": "gini",
             "clf__max_features": "sqrt",
             "clf__min_samples_split": 3,
-            "clf__n_estimators": 300,  
+            "clf__n_estimators": 300,
         }
-        pipe_RF.set_params(**best_params)
-
-        print('#'*50)
-        print(code_train)
-        print(tag_train)
-        print('#'*50)
+        model.set_params(**best_params)
 
         # Fitting
-        pipe_RF.fit(code_train, tag_train)
-
-        # Evaluation of the training model
-        print(f"Accuracy: {pipe_RF.score(code_test, tag_test)}")
-        return pipe_RF
+        model.fit(code_train, tag_train)
+        print(f"Accuracy: {model.score(code_test, tag_test)}")
+        return model
