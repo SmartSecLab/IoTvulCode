@@ -18,8 +18,10 @@ import warnings
 from pathlib import Path
 from string import printable
 from argparse import ArgumentParser
+from configparser import ConfigParser
 
 import matplotlib.pyplot as plt
+import tensorflow as tf
 import numpy as np
 import pandas as pd
 import yaml
@@ -112,6 +114,53 @@ def load_model(model_JSON, file_weights):
     return model
 
 
+def init_neptune(exp_name):
+    """return neptune init object if neptune is enabled"""
+    import neptune
+
+    nt_config = ConfigParser()
+    neptune_file = ".neptune.ini"
+    print("Reading neptune config file: ", neptune_file)
+
+    nt_config.read(neptune_file)
+    project = nt_config["neptune_access"]["project"]
+    api_token = nt_config["neptune_access"]["api_token"]
+
+    nt_run = neptune.init_run(
+        project=project, api_token=api_token, name="IoTvulCode", tags=exp_name
+    )  # your neptune credentials
+
+    # save configuration and module file to the neptune.
+    nt_run["configurations"].upload("config.yaml")
+    nt_run["model_archs"].upload("src/models.py")
+    nt_run["code"].upload("src/run.py")
+    return nt_run
+
+
+def apply_checkpoints(model_path, patience):
+    """apply tf callbacks to store the best model checkpoint and apply early stopping."""
+    log_dir = model_path + "logs/"
+    Path(log_dir).mkdir(parents=True, exist_ok=True)
+    model.save_weights(model_path + "pre-fit.weights")
+
+    tf_callbacks = [
+        tf.keras.callbacks.EarlyStopping(
+            patience=patience,
+            monitor="val_loss",
+            mode="min",
+            restore_best_weights=True,
+        ),
+        tf.keras.callbacks.ModelCheckpoint(
+            filepath=model_path + "checkpoint_model.h5",
+            save_best_only=True,
+            monitor="val_loss",
+            mode="min",
+        ),
+        tf.keras.callbacks.TensorBoard(log_dir=log_dir),
+    ]
+    return tf_callbacks
+
+
 if __name__ == "__main__":
     # Command Line Arguments:
     parser = ArgumentParser(
@@ -162,17 +211,32 @@ if __name__ == "__main__":
         print("Invalid Model! Please select any valid model!")
         exit(1)
 
+    # applying callbacks
+    # Lets save our current model state so we can reload it later
+    if config["debug"]:
+        config["model"]["path"] = config["model"]["path"].rsplit("/", 1)[0] + "-debug/"
+
+    tf_callbacks = apply_checkpoints(
+        model_path=config["model"]["path"], patience=config["dnn"]["patience"]
+    )
+
+    if config["model"]["use_neptune"]:
+        from neptune.integrations.tensorflow_keras import NeptuneCallback
+
+        print("\n" + "-" * 30 + "Neptune" + "-" * 30 + "\n")
+        nt_run = init_neptune(config["model"]["path"])
+        neptune_cbk = NeptuneCallback(run=nt_run, base_namespace="metrics")
+        tf_callbacks.append(neptune_cbk)
+
     # Fitting model and Cross-Validation
-    if CLASS_MODEL == "RF":
-        # Evaluation of the training model
-        print("-" * 50)
-    else:
+    if CLASS_MODEL != "RF":
         history = model.fit(
             X_train,
             y_train,
             epochs=epochs,
             batch_size=batch_size,
             validation_data=(X_test, y_test),
+            callbacks=[tf_callbacks],
         )
         # print(history)
         loss, accuracy = model.evaluate(X_test, y_test, verbose=1)

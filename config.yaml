@@ -1,5 +1,5 @@
 data_file: 'data/iDetect_refine/RF_Binary.csv' 
-result_dir: results/
+result_dir: result/
 debug: False # mode: turn debugging mode True for preprocessing on debug_rows samples.
 apply_balancer: False # True if you want to apply the classes' balancer
 train: True
@@ -20,6 +20,7 @@ model:    # settings for training and testing experiments
   k-fold: 20 # number of cross-validation folds
   save: True # save the trained model (True) or not (False)
   split_ratio: 0.30 # ratio of training and testing ratio
+  path: result/
   use_neptune: True # Boolean value to switch between enabling neptune usage or not 
                     # for tracking the experiments in neptune.ai, 
                     # If True, make sure you have correctly configured '.neptune_config.ini' file
