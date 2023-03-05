@@ -218,8 +218,8 @@ class Classifier:
         else:
             model = Model(inputs=[main_input], outputs=[output])
 
-        # # CNN Model Settings and define optimizer
-        model = Model(inputs=main_input, outputs=[Emb_Layer])
+        # # CNN Model Settings and define optimizer #TODO check this
+        # model = Model(inputs=main_input, outputs=[Emb_Layer])
 
         # apply optimizer
         model = self.optimize_model(model)
@@ -264,7 +264,7 @@ class Classifier:
         model.add(Dense(self.output_dim, activation="softmax"))
 
         # apply optimizer
-        model = optimize_model(self, model)
+        model = self.optimize_model(self, model)
         return model
 
     def apply_RF(self, df):
@@ -310,5 +310,6 @@ class Classifier:
 
         # Fitting
         model.fit(code_train, tag_train)
-        print(f"Accuracy: {model.score(code_test, tag_test)}")
+        acc = model.score(code_test, tag_test)
+        print(f"Accuracy: {acc}")
         return model

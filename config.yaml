@@ -1,9 +1,9 @@
 data_file: 'data/iDetect_refine/RF_Binary.csv' 
 result_dir: result/
-debug: False # mode: turn debugging mode True for preprocessing on debug_rows samples.
 apply_balancer: False # True if you want to apply the classes' balancer
 train: True
-test: True
+test: False
+debug: False # mode: turn debugging mode True for preprocessing on debug_rows samples.
 
 preprocess:
   raw_dir: data/local
@@ -21,11 +21,12 @@ model:    # settings for training and testing experiments
   save: True # save the trained model (True) or not (False)
   split_ratio: 0.30 # ratio of training and testing ratio
   path: result/
+  save: True  # do you want to save the trained model or not?
   use_neptune: True # Boolean value to switch between enabling neptune usage or not 
                     # for tracking the experiments in neptune.ai, 
                     # If True, make sure you have correctly configured '.neptune_config.ini' file
 dnn:
-  epochs: 2  # default iDetect 800
+  epochs: 200  # default iDetect 800
   batch: 64
   input_length: 150
   input_dim: 150

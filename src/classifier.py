@@ -33,7 +33,7 @@ from keras.utils import np_utils, pad_sequences
 from sklearn import model_selection
 
 from src.models import Classifier
-from src.plot import plot_metrics
+from src.plot import plot_metrics, plot_history
 
 warnings.filterwarnings("ignore")
 
@@ -76,7 +76,7 @@ def tokenize_data(df):
 
 
 # Save model to disk
-def save_model(model_JSON, file_weights):
+def save_model_idetect(model_JSON, file_weights):
     """Saving model to disk"""
     print("Saving model to disk: ", model_JSON, "and", file_weights)
     # have h5py installed
@@ -88,6 +88,18 @@ def save_model(model_JSON, file_weights):
     if Path(file_weights).is_file():
         os.remove(file_weights)
     model.save_weights(file_weights)
+
+
+def save_model(model_file, config):
+    """save the trained model as a pickle file"""
+    if config["model"]["save"]:
+        if config["model"]["name"] != "RF":
+            model.save(model_file)
+        else:
+            pickle.dump(model, open(model_file, "wb"))
+
+    print("The final trained model is saved at: ", model_file)
+    print("\n" + "-" * 35 + "Training Completed" + "-" * 35 + "\n")
 
 
 # Layer dimensions
@@ -114,9 +126,14 @@ def load_model(model_JSON, file_weights):
     return model
 
 
-def init_neptune(exp_name):
+def init_neptune(classfr, epochs, data_file):
     """return neptune init object if neptune is enabled"""
     import neptune
+
+    # from neptune.integrations.tensorflow_keras import NeptuneCallback
+
+    print("\n" + "-" * 30 + "Neptune" + "-" * 30 + "\n")
+    exp_tags = [classfr, f"epochs:{epochs}", data_file]
 
     nt_config = ConfigParser()
     neptune_file = ".neptune.ini"
@@ -126,23 +143,22 @@ def init_neptune(exp_name):
     project = nt_config["neptune_access"]["project"]
     api_token = nt_config["neptune_access"]["api_token"]
 
+    # put your neptune credentials
     nt_run = neptune.init_run(
-        project=project, api_token=api_token, name="IoTvulCode", tags=exp_name
-    )  # your neptune credentials
-
-    # save configuration and module file to the neptune.
+        project=project, api_token=api_token, name="IoTvulCode", tags=exp_tags
+    )
+    # save configuration and module file to neptune.
     nt_run["configurations"].upload("config.yaml")
     nt_run["model_archs"].upload("src/models.py")
-    nt_run["code"].upload("src/run.py")
+    nt_run["code"].upload("src/classifier.py")
     return nt_run
 
 
-def apply_checkpoints(model_path, patience):
+def apply_checkpoints(model, cp_path, patience):
     """apply tf callbacks to store the best model checkpoint and apply early stopping."""
-    log_dir = model_path + "logs/"
+    log_dir = cp_path + "logs/"
     Path(log_dir).mkdir(parents=True, exist_ok=True)
-    model.save_weights(model_path + "pre-fit.weights")
-
+    model.save_weights(cp_path + "pre-fit.weights")
     tf_callbacks = [
         tf.keras.callbacks.EarlyStopping(
             patience=patience,
@@ -151,7 +167,7 @@ def apply_checkpoints(model_path, patience):
             restore_best_weights=True,
         ),
         tf.keras.callbacks.ModelCheckpoint(
-            filepath=model_path + "checkpoint_model.h5",
+            filepath=cp_path + "checkpoint_model.h5",
             save_best_only=True,
             monitor="val_loss",
             mode="min",
@@ -159,6 +175,41 @@ def apply_checkpoints(model_path, patience):
         tf.keras.callbacks.TensorBoard(log_dir=log_dir),
     ]
     return tf_callbacks
+
+
+def train_model(classfr):
+    """Choose ML model"""
+    mdl_obj = Classifier(config)
+
+    if classfr == "RNN":
+        model = mdl_obj.apply_RNN()
+    elif classfr == "CNN":
+        model = mdl_obj.apply_CNN()
+    elif classfr == "LSTM":
+        model = mdl_obj.apply_LSTM()
+    elif classfr == "RF":
+        model = mdl_obj.apply_RF(df)
+    elif classfr == "multiDNN":
+        model = mdl_obj.apply_multiDNN()
+    else:
+        print("Invalid model! Please select any valid model!")
+        exit(1)
+    return model
+
+
+def gen_model_dir(config, clr, epochs):
+    """save our current model state so we can reload it later"""
+    mdir = clr + "-" + epochs + "-" + Path(data_file).stem + "/"
+    config["model"]["path"] = config["model"]["path"] + mdir
+
+    if config["debug"]:
+        config["model"]["path"] = config["model"]["path"].rsplit("/", 1)[0] + "-debug/"
+        # config["dnn"]["epochs"] = 2
+
+    if config["train"]:
+        Path(config["model"]["path"]).mkdir(parents=True, exist_ok=True)
+    print(f"\n\nModel path: {config['model']['path']}")
+    return config
 
 
 if __name__ == "__main__":
@@ -176,13 +227,16 @@ if __name__ == "__main__":
     test_size = config["model"]["split_ratio"]
     seed = config["model"]["seed"]
     data_file = config["data_file"]
-    epochs = config["dnn"]["epochs"]
+    epochs = config["dnn"]["epochs"] if config["debug"] != True else 2
     batch_size = config["dnn"]["batch"]
-    CLASS_MODEL = paras.model if paras.model else config["model"]["name"]
+    classfr = paras.model if paras.model else config["model"]["name"]
     max_len = config["preprocess"]["max_len"]  # for pad_sequences
 
+    # create a dynamic path to save the trained model
+    config = gen_model_dir(config, clr=classfr, epochs=str(epochs))
+
     # Display settings
-    print("\n\n" + "=" * 25 + " " + CLASS_MODEL + " Model Training " + "=" * 25)
+    print("\n\n" + "=" * 25 + " " + classfr + " Model Training " + "=" * 25)
     print(f"Configurations: \n {config}")
     print("-" * 50)
 
@@ -195,41 +249,27 @@ if __name__ == "__main__":
         X, target, test_size=test_size, random_state=seed
     )
 
-    # Choose ML model
-    mdl_obj = Classifier(config)
-    if CLASS_MODEL == "RNN":
-        model = mdl_obj.apply_RNN()
-    elif CLASS_MODEL == "CNN":
-        model = mdl_obj.apply_CNN()
-    elif CLASS_MODEL == "LSTM":
-        model = mdl_obj.apply_LSTM()
-    elif CLASS_MODEL == "RF":
-        model = mdl_obj.apply_RF(df)
-    elif CLASS_MODEL == "multiDNN":
-        model = mdl_obj.apply_multiDNN()
-    else:
-        print("Invalid Model! Please select any valid model!")
-        exit(1)
+    # get the train model
+    model = train_model(classfr)
 
-    # applying callbacks
-    # Lets save our current model state so we can reload it later
-    if config["debug"]:
-        config["model"]["path"] = config["model"]["path"].rsplit("/", 1)[0] + "-debug/"
-
-    tf_callbacks = apply_checkpoints(
-        model_path=config["model"]["path"], patience=config["dnn"]["patience"]
-    )
-
+    # store metadata to neptune.ai
     if config["model"]["use_neptune"]:
         from neptune.integrations.tensorflow_keras import NeptuneCallback
 
-        print("\n" + "-" * 30 + "Neptune" + "-" * 30 + "\n")
-        nt_run = init_neptune(config["model"]["path"])
-        neptune_cbk = NeptuneCallback(run=nt_run, base_namespace="metrics")
-        tf_callbacks.append(neptune_cbk)
+        nt_run = init_neptune(classfr, epochs, data_csv)
 
-    # Fitting model and Cross-Validation
-    if CLASS_MODEL != "RF":
+    # applying callbacks
+    if classfr != "RF":
+        tf_callbacks = apply_checkpoints(
+            model=model,
+            cp_path=config["model"]["path"],
+            patience=config["dnn"]["patience"],
+        )
+        if config["model"]["use_neptune"]:
+            neptune_cbk = NeptuneCallback(run=nt_run, base_namespace="metrics")
+            tf_callbacks.append(neptune_cbk)
+
+        # Fitting model and Cross-Validation
         history = model.fit(
             X_train,
             y_train,
@@ -238,8 +278,34 @@ if __name__ == "__main__":
             validation_data=(X_test, y_test),
             callbacks=[tf_callbacks],
         )
-        # print(history)
         loss, accuracy = model.evaluate(X_test, y_test, verbose=1)
-        # print('\nTesting Accuracy =', accuracy, '\n')
-        plot_metrics(history)
-        print("\nFinal Cross-Validation Accuracy of RNN training model", accuracy, "\n")
+        # plot_metrics(history)
+        fig_name = config["model"]["path"] + classfr
+        plot_history(history, fig_name)
+        print(f"\nAccuracy of the model: {accuracy}\n")
+
+        # save tracked files
+        if config["model"]["use_neptune"]:
+            nt_run["learning_curves"].track_files(fig_name + ".pdf")
+            nt_run["loss_curve"].track_files(fig_name + "_loss.pdf")
+
+        model_file = config["model"]["path"] + "model-final.h5"
+        if config["train"]:
+            save_model(model_file, config)
+    else:
+        # TODO: log non-DNN models output to neptune
+        # nt_run["acc"] = ?? or params=dict
+        print(f"Trained with non-DNN model: {classfr}")
+
+    # under construction
+    if config["test"]:
+        _, _, X_test, y_train, _, y_test = split_data(df, config)
+        output_size = len(set(list(y_train)))
+
+        if config["model"]["name"] != "RF":
+            test_model(model_file, X_test, y_test, output_size)
+        else:
+            loaded_model = pickle.load(open(model_file, "RF"))
+            result = loaded_model.score(X_test, y_test)
+            print("Result: ", result)
+        print("\n" + "-" * 35 + "Testing Completed" + "-" * 35 + "\n")

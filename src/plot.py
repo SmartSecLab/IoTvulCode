@@ -30,10 +30,10 @@ def plot_metrics(history):
     plt.ylabel("Accuracy")
     plt.xlabel("Epoch")
     plt.legend(["Accuracy"], loc="lower right")
-    plt.show()
+    # plt.show()
 
 
-def plot_history(history, fig_name):
+def plot_history(history, fig_name=None):
     """
     plot ML performance metrics obtained from the training/testing history
     reference: https://github.com/SmartSecLab/ENViSEC/blob/main/src/utility.py
@@ -41,18 +41,14 @@ def plot_history(history, fig_name):
     plt.figure(figsize=(12, 10))
     plt.rcParams["font.size"] = "16"
     plt.xlabel("epoch")
-    plt.ylabel("performance measures")
-    plt.plot(history.epoch,
-             np.array(history.history["accuracy"]),
-             label="train_accuracy")
-    plt.plot(history.epoch,
-             np.array(history.history["val_accuracy"]),
-             label="val_accuracy")
+    plt.ylabel("score")
+    plt.plot(history.epoch, np.array(history.history["acc"]), label="train_acc")
+    plt.plot(history.epoch, np.array(history.history["val_acc"]), label="val_acc")
 
     if "precision" in history.history:
-        plt.plot(history.epoch,
-                 np.array(history.history["precision"]),
-                 label="precision")
+        plt.plot(
+            history.epoch, np.array(history.history["precision"]), label="precision"
+        )
         plt.plot(
             history.epoch,
             np.array(history.history["val_precision"]),
@@ -60,29 +56,25 @@ def plot_history(history, fig_name):
         )
 
     if "recall" in history.history:
-        plt.plot(history.epoch,
-                 np.array(history.history["recall"]),
-                 label="recall")
-        plt.plot(history.epoch,
-                 np.array(history.history["val_recall"]),
-                 label="val_recall")
+        plt.plot(history.epoch, np.array(history.history["recall"]), label="recall")
+        plt.plot(
+            history.epoch, np.array(history.history["val_recall"]), label="val_recall"
+        )
     plt.legend()
     # plt.ylim([0, 1])
-    plt.savefig(fig_name + ".pdf")
+    if fig_name:
+        plt.savefig(fig_name + ".pdf")
 
     # plotting loss curve separately
     plt.figure(figsize=(12, 10))
     plt.xlabel("epoch")
-    plt.ylabel("performance measures")
-    plt.plot(history.epoch,
-             np.array(history.history["loss"]),
-             label="train_loss")
-    plt.plot(history.epoch,
-             np.array(history.history["val_loss"]),
-             label="val_loss")
+    plt.ylabel("score")
+    plt.plot(history.epoch, np.array(history.history["loss"]), label="train_loss")
+    plt.plot(history.epoch, np.array(history.history["val_loss"]), label="val_loss")
     plt.legend()
     # plt.ylim([0, 1])
-    plt.savefig(fig_name + "_loss.pdf")
+    if fig_name:
+        plt.savefig(fig_name + "_loss.pdf")
 
 
 def plot_curves(fig_name, kfold, trained_model, X, y, cv=3, return_times=True):
