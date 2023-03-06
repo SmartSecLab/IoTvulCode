@@ -29,7 +29,7 @@ from pathlib import Path
 # user defined
 from src.tools import apply_flawfinder, apply_cppcheck, apply_rats, merge_tools_result
 
-pl_list = ["C", "C++"]
+pl_list = ["c", "c++", "cpp", "h"]
 
 
 def function_metrics(source_file, lines, cwes, context, tool=["cppcheck"]):
@@ -132,19 +132,6 @@ def function_metrics(source_file, lines, cwes, context, tool=["cppcheck"]):
     #     return process
 
 
-def guess_pl(file, zip_obj=None):
-    """guess programming language of the input file."""
-    guess = Guess()
-    if zip_obj is not None:
-        # extract a specific file from the zip container
-        with zip_obj.open(file, "r") as f:
-            lang = guess.language_name(f.read())
-    else:
-        with open(file, "r", encoding="unicode_escape") as f:
-            lang = guess.language_name(f.read())
-    return lang
-
-
 def project_flaws(df):
     """find flaw entries of all the complete project scanning each unique file."""
     df_prj = pd.DataFrame()
@@ -226,6 +213,28 @@ def retrieve_zip(url):
     else:
         print("Internet is not working!")
         return None
+
+
+def guess_pl(file, zip_obj=None):
+    """guess programming language of the input file.
+    Recursively Remove .DS_Store which was introducing encoding error,
+    https://jonbellah.com/articles/recursively-remove-ds-store
+    ignore all files with . start and compiled sources
+    TODO extract .zip file for further flaw finding
+    """
+    guess = Guess()
+    try:
+        if zip_obj is not None:
+            # extract a specific file from the zip container
+            with zip_obj.open(file, "r") as f:
+                lang = guess.language_name(f.read())
+        else:
+            with open(file, "r") as f:
+                lang = guess.language_name(f.read())
+        return lang
+    except Exception as e:
+        print(f"Guesslang error: {e}")
+        return "unknown"
 
 
 def urlzip2df(url):

@@ -142,8 +142,14 @@ def apply_rats(file_or_dir, xmlfile="output.xml"):
 
 def concat(*args):
     """merge two columns of the dataframw with numpy vectorize method"""
-    strs = [str(arg) for arg in args if not pd.isnull(arg)]
-    return ",".join(strs) if strs else np.nan
+    concat_str = ""
+    try:
+        strs = [str(arg) for arg in args if not pd.isnull(arg)]
+        concat_str = ",".join(strs) if strs else np.nan
+    except ValueError as e:
+        print("Value Error: ", e)
+        print(concat_str)
+    return concat_str
 
 
 def merge_tools_result(df_ff, df_cc, df_rat):
