@@ -29,7 +29,7 @@ from pathlib import Path
 # user defined
 from src.tools import apply_flawfinder, apply_cppcheck, apply_rats, merge_tools_result
 
-pl_list = ["c", "c++", "cpp", "h"]
+pl_list = ["C", "C++", "CPP"]
 
 
 def function_metrics(source_file, lines, cwes, context, tool=["cppcheck"]):
