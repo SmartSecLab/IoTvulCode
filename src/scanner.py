@@ -221,6 +221,7 @@ def guess_pl(file, zip_obj=None):
     https://jonbellah.com/articles/recursively-remove-ds-store
     ignore all files with . start and compiled sources
     TODO extract .zip file for further flaw finding
+    TODO fix: Empty source code provided
     """
     guess = Guess()
     try:
@@ -243,11 +244,11 @@ def urlzip2df(url):
     zipobj = None
 
     if os.path.isdir(url):
-        print(f"Current project directory: {url}\nScanning for flaws....")
+        print(f"Project dir: {url}\nScanning for flaws (takes a while)....")
         files = [str(f) for f in Path(url).rglob("*.*")]
         selected_files = [x for x in files if guess_pl(x) in pl_list]
     else:
-        print(f"Current project URL: {url}\nScanning for flaws....")
+        print(f"Project URL: {url}\nScanning for flaws (takes a while)....")
         zipobj = retrieve_zip(url)
         files = zipobj.namelist()
         selected_files = [x for x in files if guess_pl(x, zipobj) in pl_list]
