@@ -42,11 +42,13 @@ from keras.layers import (
 from keras.layers.core import Activation, Dense, Dropout, Flatten, Lambda
 from keras.models import Model, Sequential, load_model, model_from_json
 from keras.optimizers import SGD, Adam, RMSprop
+
 from keras.preprocessing import sequence
 from keras.utils import np_utils
 from keras_metrics import metrics as km
 from matplotlib import pyplot
 from nltk.tokenize.regexp import WhitespaceTokenizer
+
 from sklearn import model_selection
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer

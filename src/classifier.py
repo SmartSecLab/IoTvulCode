@@ -25,10 +25,12 @@ import tensorflow as tf
 import numpy as np
 import pandas as pd
 import yaml
+from dvclive.keras import DVCLiveCallback
 
-from keras.utils import np_utils, pad_sequences
+from keras.utils import np_utils
+from keras.utils import pad_sequences
 
-# from keras_preprocessing.sequence import pad_sequences
+# from keras.preprocessing.sequence import pad_sequences
 
 from sklearn import model_selection
 
@@ -204,7 +206,10 @@ def gen_model_dir(config, clr, epochs):
 
     if config["debug"]:
         config["model"]["path"] = config["model"]["path"].rsplit("/", 1)[0] + "-debug/"
-        # config["dnn"]["epochs"] = 2
+        config["model"]["use_neptune"] = (
+            False if config["debug"] == True else config["model"]["use_neptune"]
+        )
+        config["dnn"]["epochs"] = 2
 
     if config["train"]:
         Path(config["model"]["path"]).mkdir(parents=True, exist_ok=True)
@@ -276,7 +281,8 @@ if __name__ == "__main__":
             epochs=epochs,
             batch_size=batch_size,
             validation_data=(X_test, y_test),
-            callbacks=[tf_callbacks],
+            # callbacks=[tf_callbacks],
+            callbacks=[DVCLiveCallback(save_dvc_exp=True)],
         )
         loss, accuracy = model.evaluate(X_test, y_test, verbose=1)
         # plot_metrics(history)

@@ -26,8 +26,8 @@ model:    # settings for training and testing experiments
                     # for tracking the experiments in neptune.ai, 
                     # If True, make sure you have correctly configured '.neptune_config.ini' file
 dnn:
-  epochs: 200  # default iDetect 800
-  batch: 64
+  epochs: 10  # default iDetect 800
+  batch: 128  # 64 iDetect
   input_length: 150
   input_dim: 150
   output_dim: 32
