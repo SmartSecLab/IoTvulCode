@@ -1,4 +1,5 @@
-data_file: 'data/iDetect_refine/RF_Binary.csv' 
+# data_file: 'data/iDetect_refine/RF_Binary.csv' 
+data_file: 'data/contiki-master_Binary.csv'
 result_dir: result/
 apply_balancer: False # True if you want to apply the classes' balancer
 train: True
@@ -26,7 +27,7 @@ model:    # settings for training and testing experiments
                     # for tracking the experiments in neptune.ai, 
                     # If True, make sure you have correctly configured '.neptune_config.ini' file
 dnn:
-  epochs: 10  # default iDetect 800
+  epochs: 50  # default iDetect 800
   batch: 128  # 64 iDetect
   input_length: 150
   input_dim: 150

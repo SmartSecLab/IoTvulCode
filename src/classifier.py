@@ -35,7 +35,6 @@ from src.plot import plot_history, plot_metrics
 # from keras.preprocessing.sequence import pad_sequences
 
 
-
 warnings.filterwarnings("ignore")
 
 
@@ -52,7 +51,7 @@ def load_config(yaml_file):
 
 def load_data(data_csv):
     """Load data code_snippet"""
-    df = pd.read_csv(data_csv, encoding="unicode_escape")
+    df = pd.read_csv(data_csv, encoding="utf-8")  # og: encoding="unicode_escape"
     # Checking for duplicate rows or null values
     df = df.dropna().drop_duplicates().reset_index(drop=True)
     print(f"\nShape of the input data: {df.shape}")
