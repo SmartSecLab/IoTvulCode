@@ -25,30 +25,17 @@ import tensorflow as tf
 from keras import backend as K
 from keras import regularizers
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-from keras.layers import (
-    ELU,
-    LSTM,
-    BatchNormalization,
-    Bidirectional,
-    Convolution1D,
-    Convolution2D,
-    Embedding,
-    Input,
-    MaxPooling1D,
-    MaxPooling2D,
-    SimpleRNN,
-    concatenate,
-)
+from keras.layers import (ELU, LSTM, BatchNormalization, Bidirectional,
+                          Convolution1D, Convolution2D, Embedding, Input,
+                          MaxPooling1D, MaxPooling2D, SimpleRNN, concatenate)
 from keras.layers.core import Activation, Dense, Dropout, Flatten, Lambda
 from keras.models import Model, Sequential, load_model, model_from_json
 from keras.optimizers import SGD, Adam, RMSprop
-
 from keras.preprocessing import sequence
 from keras.utils import np_utils
 from keras_metrics import metrics as km
 from matplotlib import pyplot
 from nltk.tokenize.regexp import WhitespaceTokenizer
-
 from sklearn import model_selection
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer

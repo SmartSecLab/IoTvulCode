@@ -3,34 +3,34 @@
 ## Grepping functions from the vulnerability context of the file.
 # file, function and statement-level information
 
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import plotly.express as px
-import lizard
-import subprocess as sub
-from pylibsrcml import srcml
-import os
-import xml.etree.ElementTree as et
-import sys
 import csv
-import requests
-from io import BytesIO, StringIO
-import numpy as np
 import itertools
+import os
+import subprocess as sub
+import sys
 import tempfile
-import yaml
-
-from zipfile import ZipFile
-from guesslang import Guess
+import xml.etree.ElementTree as et
+from io import BytesIO, StringIO
 from pathlib import Path
+from zipfile import ZipFile
 
+import lizard
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import requests
+import seaborn as sns
+import yaml
+from guesslang import Guess
+from pylibsrcml import srcml
 
 # user defined
 from src.tools import SecTools
 
 pl_list = ["C", "C++", "CPP"]
 sect = SecTools()
+
 
 def function_metrics(source_file, lines, cwes, context, tool=["cppcheck"]):
     """split the given file into a list of function blocks and return their metrics into a dataframe
@@ -169,7 +169,7 @@ def compose_file_flaws(file, zip_obj=None):
 
     fp = tempfile.NamedTemporaryFile(suffix="_Flawfinder", prefix="Filename_")
 
-    # deal with the temp file of extracted zipped file
+    # deal with the temp file of the extracted zipped file
     try:
         fp.write(file_content)
         fp.seek(0)  # move reader's head to the initial point of the file.

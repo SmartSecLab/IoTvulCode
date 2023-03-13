@@ -22,10 +22,11 @@ import json
 import os
 import re
 from io import BytesIO
-import pandas as pd
-import requests
 from pathlib import Path
 from zipfile import ZipFile
+
+import pandas as pd
+import requests
 from pandas import json_normalize
 
 # from extract_cwe_record import add_cwe_class,  extract_cwe
@@ -103,8 +104,11 @@ def rename_columns(name):
     """
     name = name.split(".", 2)[-1].replace(".", "_")
     name = re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
-    name = (name.replace("cvss_v", "cvss").replace("_data", "_json").replace(
-        "description_json", "description"))
+    name = (
+        name.replace("cvss_v", "cvss")
+        .replace("_data", "_json")
+        .replace("description_json", "description")
+    )
     return name
 
 
@@ -168,9 +172,7 @@ def import_cves():
 
         # Check if the directory already has the json file or not ?
         if os.path.isfile(Path(DATA_PATH) / "json" / extract_target):
-            print(
-                f"Reusing the {year} CVE json file that was downloaded earlier..."
-            )
+            print(f"Reusing the {year} CVE json file that was downloaded earlier...")
             json_file = Path(DATA_PATH) / "json" / extract_target
         else:
             # url_to_open = urlopen(zip_file_url, timeout=10)
@@ -197,5 +199,5 @@ def import_cves():
     print("-" * 70)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     import_cves()

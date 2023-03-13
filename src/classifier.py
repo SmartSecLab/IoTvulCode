@@ -15,27 +15,26 @@ import os
 import re
 import sys
 import warnings
-from pathlib import Path
-from string import printable
 from argparse import ArgumentParser
 from configparser import ConfigParser
+from pathlib import Path
+from string import printable
 
 import matplotlib.pyplot as plt
-import tensorflow as tf
 import numpy as np
 import pandas as pd
+import tensorflow as tf
 import yaml
 from dvclive.keras import DVCLiveCallback
-
-from keras.utils import np_utils
-from keras.utils import pad_sequences
-
-# from keras.preprocessing.sequence import pad_sequences
-
+from keras.utils import np_utils, pad_sequences
 from sklearn import model_selection
 
 from src.models import Classifier
-from src.plot import plot_metrics, plot_history
+from src.plot import plot_history, plot_metrics
+
+# from keras.preprocessing.sequence import pad_sequences
+
+
 
 warnings.filterwarnings("ignore")
 
