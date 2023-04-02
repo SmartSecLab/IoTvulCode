@@ -28,7 +28,7 @@ from pylibsrcml import srcml
 # user defined
 from src.tools import SecTools
 
-pl_list = ["C", "C++", "CPP"]
+pl_list = ["c", "c++", "cpp", "cxx", "cp", "h"]
 sect = SecTools()
 
 
@@ -38,42 +38,41 @@ def function_metrics(source_file, lines, cwes, context, tool=["cppcheck"]):
     either we have to concatenate two lines of full_parameters or ignore it and take it from long_name if needed.
     drop['full_parameters', 'fan_in', 'fan_out', 'general_fan_out'] because lizard has not properly
     implemented these parameters yet."""
-
-    # lines = [eval(l) for l in lines]  # python default casting to integer
     df_file = pd.DataFrame()
 
-    with open(source_file, "r") as fp:
+    with open(source_file, "r", errors="surrogateescape") as fp:
         liz_file = lizard.analyze_file.analyze_source_code(source_file, fp.read())
 
         for ifun in range(len(liz_file.function_list)):
-            fun_metrics = liz_file.function_list[ifun].__dict__
-            df_fun = pd.DataFrame.from_dict(fun_metrics)
-
-            start = int(fun_metrics["start_line"])
-            end = int(fun_metrics["end_line"])
-            fp.seek(0)  # move header to the initial point of the file
-
             vul_content = ""
             vul_statements = []
             cwe = []
             vul_bool = False
 
+            fun_metrics = liz_file.function_list[ifun].__dict__
+            df_fun = pd.DataFrame.from_dict(fun_metrics)
+
+            start = int(fun_metrics["start_line"])
+            end = int(fun_metrics["end_line"])
+            fp.seek(0)  # move the header to the initial point of the file
+
             # check if any of the lines of the file belong to any functions
-            for index, (l, c, t, cnt) in enumerate(zip(lines, cwes, context, tool)):
+            for index, (l, c, cnt, t) in enumerate(zip(lines, cwes, context, tool)):
+
                 fun_block = [line for line in itertools.islice(fp, start, end)]
                 fp.seek(0)
                 df_fun["code"] = fun_metrics["long_name"] + "".join(fun_block)
 
                 # check if the vulnerability content/statement appear in the function block or not.
-                # For 'is_vul' equals  True
-                if start <= l <= end:
-                    if t == "cppcheck":
+                # the type of the vul line should be int and then lies in the function block.
+                if (type(l) == "int") and (start <= l <= end):
+                    if t.lower() == "cppcheck":
                         # option 1
                         vul_content = fun_block[l - start]
                         vul_statements.append(vul_content)
                         fp.seek(0)
 
-                        # option 2 - can be removed one if there is no error at the end
+                        # option 2 - can be removed one option if there is no error at the end
                         vul_stat2 = fp.readlines()[l]
 
                         assert (
@@ -81,7 +80,7 @@ def function_metrics(source_file, lines, cwes, context, tool=["cppcheck"]):
                         ), "Cross-check why two vul statements are different!"
                         fp.seek(0)
                     else:
-                        # ToDo: take actual Context from FlawFinder's result
+                        # TODO: take actual Context from FlawFinder's result
                         vul_content = cnt
                     vul_content = ""
                     cwe.append(c)
@@ -96,7 +95,6 @@ def function_metrics(source_file, lines, cwes, context, tool=["cppcheck"]):
                 cwe = list(set(cwe))
 
                 if len(cwe) > 0:
-                    # df_fun['cwe'] = 'unknown'  if np.isnan(cwe).all() else str(cwe)
                     df_fun["cwe"] = (
                         "unknown_vul" if all(i != i for i in cwe) else str(cwe)
                     )
@@ -118,19 +116,6 @@ def function_metrics(source_file, lines, cwes, context, tool=["cppcheck"]):
         df_file = df_file.drop(cols_filter, axis=1)
     return df_file
 
-    # # TBD: Function Under Construction:
-    # def srcML_funs(file):
-    #     """find function blocks of the given file using srcML"""
-    #     fun_ptn = "string(//src:function)"
-    #     funblk_ptn = "string((//src:function/src:name))"
-    #     # file_ptn = "string(//src:unit/@filename)"
-
-    #     # cmd = sub.Popen(["srcml", "--xpath", fun_ptn, file], stderr=sub.STDOUT)
-    #     # out, err = cmd.communicate()
-    #     cmd = ["srcml", "--xpath", funblk_ptn, xml_file]
-    #     process = sub.Popen(cmd, stderr=sub.STDOUT)
-    #     return process
-
 
 def project_flaws(df):
     """find flaw entries of all the complete project scanning each unique file."""
@@ -139,7 +124,10 @@ def project_flaws(df):
     # iterate on every unique file
     for f in list(set(df.file)):
         lines = list(df[df.file == f]["line"])
+        print(f"Projecting lines: {lines}")
+
         cwes = list(df[df.file == f]["cwe"])
+        print(f"Projecting cwes: {cwes}")
         # vul_statements = list(df_flaw[df_flaw.file==x]['cwe'])
         # lines = [x[0] if len(x) == 1 else [x[0], x[1]] for x in lines]
 
@@ -211,32 +199,47 @@ def retrieve_zip(url):
 
 
 def guess_pl(file, zip_obj=None):
-    """guess programming language of the input file.
+    """guess the programming language of the input file.
     Recursively Remove .DS_Store which was introducing encoding error,
     https://jonbellah.com/articles/recursively-remove-ds-store
     ignore all files with . start and compiled sources
     TODO extract .zip file for further flaw finding
     TODO fix: Empty source code provided
     """
-    guess = Guess()
-    try:
-        if zip_obj is not None:
-            # extract a specific file from the zip container
-            with zip_obj.open(file, "r") as f:
-                lang = guess.language_name(f.read())
-        else:
-            with open(file, "r") as f:
-                lang = guess.language_name(f.read())
-        return lang
-    except Exception as e:
-        print(f"Guesslang error: {e}")
-        return "unknown"
+    config = {}
+    with open("ext_projects.yaml", "r") as stream:
+        try:
+            config = yaml.safe_load(stream)["save"]
+        except Exception as e:
+            print("Error loading configuration file: " + str(e))
+
+    if config["apply_guesslang"]:
+        guess = Guess()
+        try:
+            if zip_obj != None:
+                # extract a specific file from the zip container
+                with zip_obj.open(file, "r") as f:
+                    lang = guess.language_name(f.read())
+            else:
+                with open(file, "r") as f:
+                    lang = guess.language_name(f.read())
+            return lang.lower()
+        except Exception as e:
+            print(f"Guesslang error: {e}")
+            return "unknown"
+    else:
+        ext = Path(file).suffix.replace(".", "").lower()
+        pl = ext if ext in pl_list else "unknown"
+        # print(f"extension: {ext} -> {pl}")
+        return pl
 
 
 def urlzip2df(url):
     """concatenate all the output dataframes of all the files"""
     print("\n" + "-" * 50)
+
     zipobj = None
+    fc = 0
 
     if os.path.isdir(url):
         print(f"Project dir: {url}\nScanning for flaws (takes a while)....")
@@ -252,7 +255,6 @@ def urlzip2df(url):
     df_flaw_prj = pd.DataFrame()
     df_metrics_prj = pd.DataFrame()
 
-    fc = 0
     if selected_files:
         # iterate on every unique file
         for file in list(set(selected_files)):
@@ -261,8 +263,10 @@ def urlzip2df(url):
             df_metrics_prj = pd.concat([df_metrics_prj, df_metrics_file])
 
             # verbose on every 50 file
-            if fc % 50 == 0:
-                print(f"\n#Files: {fc}\nGathering file metrics....")
+            if fc % 100 == 0:
+                print(
+                    f"\n#Files: {fc + 1} file(s) completed! \nGathering file metrics...."
+                )
             fc = fc + 1
 
         print("\n" + "-" * 10 + " Project Report " + "-" * 10)
@@ -290,17 +294,17 @@ def iterate_projects(prj_dir_urls):
             print("non-zipped prj")
     print("-" * 40)
 
-    print("\n\n" + "=" * 20 + " Final Composite Report " + "=" * 20)
+    print("\n\n" + "=" * 15 + " Final Composite Report " + "=" * 15)
     if len(df_flaw) > 0 and len(df_metrics) > 0:
-        print("Shape of the flaw data of all the projects:", df_flaw.shape)
+        print(f"Shape of the flaw data of all the projects: {df_flaw.shape}")
         print(
-            f"Shape of the function level metrics of all the \
-            projects: {df_metrics.shape}"
+            f"Shape of the function level metrics of all the projects: {df_metrics.shape}"
         )
     else:
         print(
             "The given list of projects  doesn't have any specified files to analyze!"
         )
+    print("=" * 50 + "\n")
     return df_flaw, df_metrics
 
 
@@ -308,9 +312,9 @@ if __name__ == "__main__":
     # The list of the URL links of the project zip files.
     config = yaml.safe_load(open("ext_projects.yaml"))
 
-    flaw_file = config["files"]["save_flaw"]
-    metric_file = config["files"]["save_metrics"]
-    override = config["files"]["override"]
+    flaw_file = config["save"]["flaw"]
+    metric_file = config["save"]["metrics"]
+    override = config["save"]["override"]
 
     if not override:
         if os.path.exists(flaw_file) or os.path.exists(metric_file):
@@ -327,6 +331,6 @@ if __name__ == "__main__":
         df_flaw.to_csv(flaw_file)
         print(f"The flaw data output is saved at {flaw_file}")
     if len(df_metrics):
-        df_metrics.to_csv(metric_file)
+        df_metrics.to_csv(metric_file, errors="replace")
         print(f"The fun metric data is saved at {metric_file}")
     print("=" * 50)

@@ -1,5 +1,5 @@
-# data_file: 'data/iDetect_refine/RF_Binary.csv' 
-data_file: 'data/contiki-master_Binary.csv'
+# data_file: 'data/iDetect_refine/RF_Binary.csv'
+data_file: "data/contiki-master_Binary.csv"
 result_dir: result/
 apply_balancer: False # True if you want to apply the classes' balancer
 train: True
@@ -8,34 +8,34 @@ debug: False # mode: turn debugging mode True for preprocessing on debug_rows sa
 
 preprocess:
   raw_dir: data/local
-  max_len: 150  # for pad_sequences 
-  max_vocab_len: 150 
+  max_len: 150 # for pad_sequences
+  max_vocab_len: 150
   # a single raw file or dir of all .csv files with path relative to data_dir
   raw_data: raw/IoTcode.csv
-  processed_data: processed/IoTcode.csv   # relative to data_dir
+  processed_data: processed/IoTcode.csv # relative to data_dir
 
-model:    # settings for training and testing experiments
-  seed: 30  # seed for reproduciability to generate same set of samples of data splits
+model: # settings for training and testing experiments
+  seed: 30 # seed for reproduciability to generate same set of samples of data splits
   type: binary # binary or multiclass
   name: LSTM # RNN, CNN or RF - RandomForest
   k-fold: 20 # number of cross-validation folds
-  save: True # save the trained model (True) or not (False)
   split_ratio: 0.30 # ratio of training and testing ratio
   path: result/
-  save: True  # do you want to save the trained model or not?
-  use_neptune: True # Boolean value to switch between enabling neptune usage or not 
-                    # for tracking the experiments in neptune.ai, 
-                    # If True, make sure you have correctly configured '.neptune_config.ini' file
+  save: True # do you want to save the trained model or not?
+  use_neptune:
+    True # Boolean value to switch between enabling neptune usage or not
+    # for tracking the experiments in neptune.ai,
+    # If True, make sure you have correctly configured '.neptune_config.ini' file
 dnn:
-  epochs: 50  # default iDetect 800
-  batch: 128  # 64 iDetect
+  epochs: 50 # default iDetect 800
+  batch: 128 # 64 iDetect
   input_length: 150
   input_dim: 150
   output_dim: 32
   lr: 1e-4
   patience: 100
   optimizer: adam # optimizer can be adam or sgd or any other
-  l2_reg: 1e-4  # L2 regularizer
+  l2_reg: 1e-4 # L2 regularizer
   dropout: 0.0 # dropout rate
   recur_dropout: 0.0 # recurrent dropout rate
   beta_1: 0.9

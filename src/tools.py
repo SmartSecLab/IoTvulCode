@@ -99,9 +99,15 @@ class SecTools:
             df = df.explode("line")
             df["line"] = df.line.astype(dtype=int, errors="ignore")
             df["tool"] = "CppCheck"
+
             # To make CWE column values uniform to FlawFinder output
-            df["cwe"] = "CWE-" + df["cwe"]
-        return df.reset_index(drop=True)
+            df["cwe"] = (
+                "CWE-" + df["cwe"]
+                if set(["cwe"]).issubset(df.columns)
+                else "unknown-vul"
+            )
+            df = df.reset_index(drop=True)
+        return df
 
     ############################## Applying FlawFinder tool ##############################
     def apply_flawfinder(self, fname) -> pd.DataFrame:

@@ -1,13 +1,17 @@
 # config file for data extraction from different IoT projects:
 projects: [
-  # "data/projects/contiki-2.4/apps",
-  # "https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download",
-  # "https://github.com/contiki-os/contiki/archive/refs/heads/master.zip",
-  # "/Users/guru/research/contiki-master",
-  "/Users/guru/research/contiki-master/apps/webbrowser/",
-  # "data/projects/contiki-2.4/",
+    # "data/projects/contiki-2.4/apps",
+    # "https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download",
+    # "https://github.com/contiki-os/contiki/archive/refs/heads/master.zip",
+    "https://github.com/raspberrypi/linux/archive/refs/heads/rpi-6.1.y.zip",
+    # "https://github.com/raspberrypi/firmware/archive/refs/heads/master.zip",
+    "https://github.com/SmartSecLab/ENViSEC/archive/refs/heads/main.zip",
+    # "/Users/guru/research/contiki-master",
+    # "/Users/guru/research/contiki-master/apps/webbrowser/",
+    # "data/projects/contiki-2.4/",
   ]
-files:
-  save_flaw: "data/contiki24_flaw.csv"
-  save_metrics: "data/contiki24_metrics.csv"
+save:
+  flaw: "data/contiki24_flaw.csv"
+  metrics: "data/contiki24_metrics.csv"
   override: True # override the existing files
+  apply_guesslang: False # do you want to use guess lang to classify files or use extension?
