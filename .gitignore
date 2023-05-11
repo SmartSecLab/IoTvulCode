@@ -170,6 +170,7 @@ dmypy.json
 data/cve-2022.csv
 data/cve-records.csv
 data/json/
+data/projects/
 data/nvdcve-1.1-2022.json
 data/nvdcve-1.1-2022.json.zip
 data/output-tunslip.csv

@@ -1,12 +1,12 @@
 # shortening commands in this Makefile
 
 # local dirs/files to exclude from rsync (also for occurences in subdirectories)
-excludes=.pio .idea .dvc .git .neptune .dvcignore .gitattributes .gitignore venv results data .DS_Store __pycache__ 
-includes=data/classes.npy data/predict/conn.log
-local=ex3
-dnat=ex3-local
-ex3project=ENViSEC/IoTvulCode
-data_path=data/
+excludes=.pio .idea .dvc .git .neptune .dvcignore .gitattributes .gitignore venv results data .DS_Store __pycache__ VulBERTa/models/finetuning_models.zip VulBERTa/models/pretraining_model.zip
+includes=VulBERTa/data
+local=ex3-local
+dnat=ex3
+ex3project=IoTvulCode/
+data_path=VulBERTa/data
 model_path=result/dnn-100-base
 
 
@@ -20,10 +20,10 @@ help:
 	@echo "make venv       # create a venv (only works on eX3)"
 
 deploy:
-	rsync -avzhHP -e 'ssh' $(addprefix --exclude , $(patsubst %,'%',$(excludes))) . ${dnat}:${ex3project}
+	rsync -avzhHP -e 'ssh' $(addprefix --include , $(patsubst %,'%',$(includes))) $(addprefix --exclude , $(patsubst %,'%',$(excludes))) . ${dnat}:${ex3project}
 	
 data:
-	rsync -avzhHP -e 'ssh' $(addprefix --exclude , $(patsubst %,'%',$(excludes))) ${data_path} ${dnat}:${ex3project}/data/raw/chunks/
+	rsync -avzhHP -e 'ssh' $(addprefix --include , $(patsubst %,'%',$(includes))) $(addprefix --exclude , $(patsubst %,'%',$(excludes)))  ${data_path} ${dnat}:${ex3project}/VulBERTa/
 
 deploy-auto:
 	@case `curl ifconfig.me` in \

@@ -147,7 +147,7 @@ def init_neptune(classfr, epochs, data_file):
     nt_run = neptune.init_run(
         project=project, api_token=api_token, name="IoTvulCode", tags=exp_tags
     )
-    # save configuration and module file to neptune.
+    # save the configuration and module file to Neptune.
     nt_run["configurations"].upload("config.yaml")
     nt_run["model_archs"].upload("src/models.py")
     nt_run["code"].upload("src/classifier.py")
@@ -297,7 +297,7 @@ if __name__ == "__main__":
         if config["train"]:
             save_model(model_file, config)
     else:
-        # TODO: log non-DNN models output to neptune
+        # TODO: log non-DNN models output to Neptune
         # nt_run["acc"] = ?? or params=dict
         print(f"Trained with non-DNN model: {classfr}")
 

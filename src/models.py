@@ -288,6 +288,7 @@ class Classifier:
             [("preprocessing", transformer), ("vectorizer", vectorizer), ("clf", clf)]
         )
 
+
         # Setting of the best parameters
         best_params = {
             "clf__criterion": "gini",

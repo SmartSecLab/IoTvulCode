@@ -1,3 +1,4 @@
+# Statement-level:
 # Analysis of IoTvulCode tool generated output for feeding non-vul statements:
 
 import pandas as pd
@@ -12,6 +13,7 @@ import re
 import xml.etree.ElementTree as et
 import warnings
 import random
+import yaml
 
 warnings.filterwarnings("ignore")
 
@@ -19,29 +21,38 @@ warnings.filterwarnings("ignore")
 def get_benign_context(row):
     """
     filter all lines if it is less than min threshold
-    randomly suffled lines
+    randomly shuffled lines
     """
-    df = pd.DataFrame()
+    config = yaml.safe_load(open("ext_projects.yaml"))
 
-    lines = [x for x in enumerate(row["code"].splitlines()) if len(x[1]) > 7]
-    random.seed(0)
-    lines = random.sample(population=lines, k=int(len(lines) / 2))
+    threshold = config["save"]["threshold_lines"]
+    benign_ratio = config["save"]["benign_ratio"]
+    seed = config["save"]["seed"]
+
+    df = pd.DataFrame()
+    # threshold 7 to filter short functions
+    lines = [x for x in enumerate(
+        row["code"].splitlines()) if len(x[1]) > threshold]
+
+    # randomly shuffle lines and takes 1/4 of the total number of lines.
+    random.seed(seed)
+    lines = random.sample(population=lines, k=int(len(lines) * benign_ratio))
 
     # TODO: remove the ambiguous vul line from the 'benign' lines if present
     # vul_line = df.line[i]
     # lines = [x for x in lines if x[0]!=vul_line]
 
-    ## convert it to dataframe and add additional columns
+    # convert it to dataframe and add additional columns
     df = pd.DataFrame(data=lines, columns=["line", "context"])
 
     # remove leading and trailing whitespace
-    df["context"] = df["context"].apply(lambda x: re.sub(r"\s+", " ", x).strip())
+    df["context"] = df["context"].apply(
+        lambda x: re.sub(r"\s+", " ", x).strip())
     df["cwe"] = "benign"
     df["tool"] = "sampling"
     df["file"] = row["filename"]
 
     line_col = df["line"].astype(int) + int(row["start_line"])
-
     max_line = max(list(line_col)) if list(line_col) else 0
     end_line = int(row["end_line"])
 
@@ -54,14 +65,13 @@ def get_benign_context(row):
 def gen_benign(dfm):
     """create benign samples to the dataframe"""
     print("-" * 50)
-    print("#Samples: ", len(dfm))
     print("Generating benign samples (wait)...")
     df_fun = pd.DataFrame()
-    
+
     for i in range(len(dfm)):
         df_get = get_benign_context(dict(dfm.iloc[i]))
         df_fun = df_fun.append(df_get).reset_index(drop=True)
-        
+
     print("#Benign samples generated: ", len(df_fun))
     print("-" * 50)
     return df_fun
@@ -69,21 +79,23 @@ def gen_benign(dfm):
 
 def drop_rows(df):
     """apply several filters to the dataframe"""
-    df["context"] = df["context"].apply(lambda x: re.sub(r"\s+", " ", x).strip())
-    len_s0 = len(df)
+    df["context"] = df["context"].apply(
+        lambda x: re.sub(r"\s+", " ", str(x)).strip())
 
     # Step 1: drop duplicates from all rows
+    len_s0 = len(df)
     df = df.drop_duplicates(subset=["cwe", "context"]).reset_index(drop=True)
     len_s1 = len(df)
     print(f"{len_s0-len_s1} duplicate samples were dropped from {len_s0} samples.")
 
     # Step 2: drop duplicates from ambiguous rows on the context column
-    ## (keeping only a first occurrence, i.e, vul/cwe sample)
+    # (keeping only a first occurrence, i.e, vul/cwe sample)
     df = (
         df.sort_values(by="cwe", ascending=True)
         .drop_duplicates(subset="context", keep="first")
         .reset_index(drop=True)
     )
+
     print(f"{len_s1-len(df)} ambiquous samples were dropped from {len_s1} samples.")
     print("-" * 50)
     return df
@@ -98,11 +110,34 @@ def save_binary(filename, dfs):
 
 
 if __name__ == "__main__":
-    # df = pd.read_csv("data/contiki-master_flaw.csv")
-    # dfm = pd.read_csv("data/contiki-master_metrics.csv")
 
-    df = pd.read_csv("data/raspberry_flaw.csv", engine="c")
-    dfm = pd.read_csv("data/raspberry_metrics.csv", engine="c")
+    dataset = 'raspberryZip'
+
+    # stat = f"data/{dataset}_statement.csv"
+    # fun = f"data/{dataset}_function.csv"
+    # binary_file = f"data/{dataset}_binary.csv"
+
+    config = yaml.safe_load(open("ext_projects.yaml"))
+
+    stat = config["save"]["statement"]
+    fun = config["save"]["function"]
+    binary_file = config["save"]["statement"].rsplit('.')[0] + '_Binary.csv'
+
+    override = config["save"]["override"]
+
+    if override == False:
+        if os.path.exists(stat) or os.path.exists(fun):
+            print(
+                f"The statement/function dataset you want to create already \
+                    exist: {stat}/{fun}\n provide another filename"
+            )
+            exit(0)
+
+    print('-'*30)
+    print(f'Reading files: {stat} and {fun}...')
+    df = pd.read_csv(stat, engine="c")
+    dfm = pd.read_csv(fun, engine="c")
+    print(f'Shape of the files: {df.shape} and {dfm.shape}')
 
     if not os.path.exists("data"):
         os.mkdir("data")
@@ -113,4 +148,4 @@ if __name__ == "__main__":
 
     # remove duplicates
     df = drop_rows(df)  # mutates df
-    dfs = save_binary("data/raspberry_binary.csv", df)
+    dfs = save_binary(binary_file, df)

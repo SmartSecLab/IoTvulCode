@@ -29,6 +29,7 @@
 \usepackage{graphbox}
 \usepackage{flafter}
 \usepackage{orcidlink}
+\usepackage{pgfplotstable}
 
 \addbibresource{IoTcode.bib}
 
@@ -40,7 +41,8 @@
 \newcommand{\specialcell}[2][c]{%
   \begin{tabular}[#1]{@{}c@{}}#2\end{tabular}}
 
-  
+
+
 
 %################################################################
 \begin{document}
@@ -49,7 +51,7 @@
 \title{Datasets for vulnerabilities detection in IoTs operating systems and applications}
 
 \author{
-    Anonymous for review
+  Anonymous for review
 }
 
 % add IEEE COPYRIGHT here
@@ -61,14 +63,14 @@
 % \IEEEpubidadjcol
 
 \begin{abstract}
-TBA
+  TBA
 \end{abstract}
 
 % \begin{IEEEkeywords}
-  \keywords{
-Cybersecurity, Internet of Things, IoT security, Smart Environments, 
-Machine Learning, Natural Language Processing;
-  }
+\keywords{
+  Cybersecurity, Internet of Things, IoT security, Smart Environments,
+  Machine Learning, Natural Language Processing;
+}
 % \end{IEEEkeywords}
 
 \maketitle
@@ -77,10 +79,10 @@ Machine Learning, Natural Language Processing;
 \section{Introduction}
 %################################################################
 
-The Internet of Things (IoT) refers to the growing interconnected physical devices, 
+The Internet of Things (IoT) refers to the growing interconnected physical devices,
 components, vehicles and home appliances to the internet~\cite{oracle2023:what}.
-These connected devices exchange information to ease our day-to-day lives, business and industries. 
-However, these devices continue to pose security issues and vulnerabilities over the years. 
+These connected devices exchange information to ease our day-to-day lives, business and industries.
+However, these devices continue to pose security issues and vulnerabilities over the years.
 
 
 
@@ -88,11 +90,11 @@ However, these devices continue to pose security issues and vulnerabilities over
 \section{Related Work}
 %################################################################
 
-Al‑Boghdady et al.~\cite{al-boghdady2022:idetect} have created a tool called iDetect for detecting 
-vulnerabilities in the C/C++ source code of IoT operating systems (OSs). 
+Al‑Boghdady et al.~\cite{al-boghdady2022:idetect} have created a tool called iDetect for detecting
+vulnerabilities in the C/C++ source code of IoT operating systems (OSs).
 The labeling of the dataset was done using static code analyzing tools (SATs);
-Cppcheck version 2.1~\cite{cppcheck2.12021:tool}, 
-Flawfinder version 2.0.11~\cite{dwheeler2021:flawfinder}, 
+Cppcheck version 2.1~\cite{cppcheck2.12021:tool},
+Flawfinder version 2.0.11~\cite{dwheeler2021:flawfinder},
 and Rough Auditing Tool for Security (RATS)~\cite{rats2021:rough}.
 
 
@@ -118,32 +120,31 @@ and Rough Auditing Tool for Security (RATS)~\cite{rats2021:rough}.
 \begin{table*}[!t]
   \centering
   \csvreader[
-    tabular=|m{4cm}|m{1cm}|,
-    /csv/separator=semicolon,
-    table head=\hline \bfseries{urls} & \bfseries{count}  \\\hline,
-    late after line=\\\hline, 
+  tabular=|m{4cm}|m{1cm}|,
+  /csv/separator=semicolon,
+  table head=\hline \bfseries{urls} & \bfseries{count}  \\\hline,
+  late after line=\\\hline,
   ]
   {../result/top-databases.csv}{}
   {\csvlinetotablerow}
   \caption{Summary of the top databases hosting vulnerability records of IoT OSs and applications}
   \label{tab:software}
-  \end{table*}
+\end{table*}
 
 
-  \begin{figure}[h!]
-    \centering
-    \includegraphics[width=10cm]{../figure/vul_sunburst.pdf}
-    \vspace*{-1.5ex}
-    \caption{The sunburst chart showing the frequency of vulnerability categories, names and CWEs}
-    \label{fig:lcurve-iot}
-  \end{figure}
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=10cm]{../figure/vul_sunburst.pdf}
+  \vspace*{-1.5ex}
+  \caption{The sunburst chart showing the frequency of vulnerability categories, names and CWEs}
+  \label{fig:lcurve-iot}
+\end{figure}
 
 
 %################################################################
 \section{Conclusion and Future Work}
 %################################################################
 \label{conclusion}
-
 
 
 \printbibliography
