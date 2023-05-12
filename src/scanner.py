@@ -36,30 +36,30 @@ cols_filter = [
     "fan_in",
     "fan_out",
     "general_fan_out",
-    "top_nesting_level"]
+    "top_nesting_level"
+]
 
 sect = SecTools()
 
 
 def extract_cwe(cwe) -> str:
-    """ Extract CWE type information 
-        In case of Rats tool's 'CWE-unknown' list, make it just a single item.
-        """
+    """ Extract CWE type information,
+    In case of Rats tool's 'CWE-unknown' list, make it just a single item."""
     cwe = list(set(cwe)) if isinstance(cwe, list) else cwe
-    if len(cwe) > 0:
-        cwe = list("CWE-unknown" if all(x != x for x in cwe)
-                   else cwe)
-        # remove 'CWE-unknown' if the sample is already labeled as a known vulnerability.
+
+    if len(cwe) > 0 and isinstance(cwe, list):
         if len(cwe) > 1 and 'CWE-unknown' in cwe:
+            # remove 'CWE-unknown' if the sample is already labeled as a known vulnerability.
             cwe.remove('CWE-unknown')
 
-        cwe = str(list(set(cwe)))
+        if len(cwe) == 1:
+            cwe = cwe[0]
     else:
-        cwe = "benign"
-    return cwe
+        cwe = 'CWE-unknown'
+    return str(cwe)
 
 
-def extract_functions(source_file, lines, cwes, context, tool=["cppcheck"]):
+def extract_functions(source_file, lines, cwes, context, tool=['cppcheck']):
     """split the given file into a list of function blocks and return their metrics into a dataframe.
     <guru> I think there is a problem in lizard detecting the correct full_parameters
     either we have to concatenate two lines of full_parameters or ignore it and take it from long_name if needed.
@@ -95,7 +95,7 @@ def extract_functions(source_file, lines, cwes, context, tool=["cppcheck"]):
             for index, (l, c, cnt, t) in enumerate(zip(lines, cwes, context, tool)):
 
                 # checks vulnerability condition
-                if (isinstance(l, int)) and (start <= l <= end):
+                if (isinstance(l, int)) and (start <= l < end):
                     vline = ''
                     if t.lower() == "cppcheck" or t.lower() == "rats":
                         vline = fp.readlines()[l]
@@ -104,8 +104,11 @@ def extract_functions(source_file, lines, cwes, context, tool=["cppcheck"]):
                     if vline != '' and cnt != cnt:
                         cnt = vline
 
-                    vul_statements.append(cnt)
+                    vul_statements.append((cnt, c))
                     cwe.append(c)
+
+            if len(cwe) == 0:
+                cwe.append('Benign')
 
             df_file_fun['code'] = fun["long_name"] + "".join(fun_block)
             df_file_fun["fun_name"] = fun["name"]
@@ -292,9 +295,9 @@ def show_info(df, name):
     print(
         f"\nShape of the {name} metrics of all the projects: {df.shape}")
     print(
-        f"#vulnerable: {len(df[df.cwe!='benign'])}")
+        f"#vulnerable: {len(df[df.cwe!='Benign'])}")
     print(
-        f"#benign: {len(df[df.cwe=='benign'])}\n")
+        f"#benign: {len(df[df.cwe=='Benign'])}\n")
 
 
 def iterate_projects(prj_dir_urls):
