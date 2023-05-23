@@ -48,7 +48,7 @@ def get_benign_context(row):
     # remove leading and trailing whitespace
     df["context"] = df["context"].apply(
         lambda x: re.sub(r"\s+", " ", x).strip())
-    df["cwe"] = "benign"
+    df["cwe"] = "Benign"
     df["tool"] = "sampling"
     df["file"] = row["filename"]
 

@@ -8,8 +8,8 @@ projects: [
     # "https://github.com/SmartSecLab/ENViSEC/archive/refs/heads/main.zip",
     # "/Users/guru/research/contiki-master",
     # "/Users/guru/research/contiki-master/apps/webbrowser/",
-    # "data/projects/contiki-2.4/",
-    "data/projects/linux-rpi-6.1.y/kernel",
+    "data/projects/contiki-2.4/core",
+    "data/projects/linux-rpi-6.1.y/kernel/trace",
   ]
 save:
   statement: "data/raspberryZip_statement.csv"

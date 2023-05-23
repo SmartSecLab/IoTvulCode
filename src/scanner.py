@@ -3,12 +3,12 @@
 # Grepping functions from the vulnerability context of the file.
 # file, function and statement-level information
 
+import ast
 import csv
 import itertools
 import os
 import subprocess as sub
 import sys
-import ast
 import tempfile
 import xml.etree.ElementTree as et
 from io import BytesIO, StringIO
@@ -26,304 +26,334 @@ import yaml
 from guesslang import Guess
 from pylibsrcml import srcml
 
-# user defined
+# User defined modules
+from src.gen_benign import drop_rows, gen_benign
+# import (self.conn, change_status, get_status, create_project_table, show_shape, table_exists)
+from src.sqlite import Database
 from src.tools import SecTools
-from src.gen_benign import gen_benign, drop_rows
-
-pl_list = ["c", "c++", "cpp", "cxx", "cp", "h"]
-cols_filter = [
-    "full_parameters",
-    "fan_in",
-    "fan_out",
-    "general_fan_out",
-    "top_nesting_level"
-]
-
-sect = SecTools()
 
 
-def extract_cwe(cwe) -> str:
-    """ Extract CWE type information,
-    In case of Rats tool's 'CWE-unknown' list, make it just a single item."""
-    cwe = list(set(cwe)) if isinstance(cwe, list) else cwe
+class Scanner:
+    def __init__(self):
+        # self.url = url
+        self.cols_filter = [
+            "full_parameters",
+            "fan_in",
+            "fan_out",
+            "general_fan_out",
+            "top_nesting_level",
+            "defaultlevel",
 
-    if len(cwe) > 0 and isinstance(cwe, list):
-        if len(cwe) > 1 and 'CWE-unknown' in cwe:
-            # remove 'CWE-unknown' if the sample is already labeled as a known vulnerability.
-            cwe.remove('CWE-unknown')
+        ]
+        # self.cols_select = ['project', 'file', 'line', 'level', 'category',
+        #                     'name', 'msg', 'suggestion', 'note', 'context', 'cwe', 'tool', 'project']
+        self.sect = SecTools()
+        self.db = Database()
+        self.conn = self.db.conn
 
-        if len(cwe) == 1:
-            cwe = cwe[0]
-    else:
-        cwe = 'CWE-unknown'
-    return str(cwe)
+    def extract_cwe(self, cwe) -> str:
+        """ Extract CWE type information,
+        In case of Rats tool's 'CWE-unknown' list, make it just a single item."""
+        cwe = list(set(cwe)) if isinstance(cwe, list) else cwe
 
+        if len(cwe) > 0 and isinstance(cwe, list):
+            if len(cwe) > 1 and 'CWE-unknown' in cwe:
+                # remove 'CWE-unknown' if the sample is already labeled as a known vulnerability.
+                cwe.remove('CWE-unknown')
 
-def extract_functions(source_file, lines, cwes, context, tool=['cppcheck']):
-    """split the given file into a list of function blocks and return their metrics into a dataframe.
-    <guru> I think there is a problem in lizard detecting the correct full_parameters
-    either we have to concatenate two lines of full_parameters or ignore it and take it from long_name if needed.
-    drop['full_parameters', 'fan_in', 'fan_out', 'general_fan_out'] because lizard has not properly
-    implemented these parameters yet.
-    check if the vulnerability content/statement appears in the function block or not.
-    type of the vul line should be int and then lies in the function block.
-    # """
-    df_file = pd.DataFrame()
-
-    # TODO: review this code now
-    with open(source_file, "r", errors="surrogateescape") as fp:
-
-        source_code = fp.read()
-        liz_file = lizard.analyze_file.analyze_source_code(
-            source_file, source_code)
-
-        for ifun in range(len(liz_file.function_list)):
-            vul_statements = []
-            cwe = []
-
-            fun = liz_file.function_list[ifun].__dict__
-            df_file_fun = pd.DataFrame.from_dict(fun)
-
-            start = int(fun["start_line"])
-            end = int(fun["end_line"])
-            fp.seek(0)  # moves the header to the initial point of the file
-
-            fun_block = [line for line in itertools.islice(fp, start, end)]
-            fp.seek(0)
-
-            # check if any of the lines of the file belong to any functions
-            for index, (l, c, cnt, t) in enumerate(zip(lines, cwes, context, tool)):
-
-                # checks vulnerability condition
-                if (isinstance(l, int)) and (start <= l < end):
-                    vline = ''
-                    if t.lower() == "cppcheck" or t.lower() == "rats":
-                        vline = fp.readlines()[l]
-                        fp.seek(0)
-
-                    if vline != '' and cnt != cnt:
-                        cnt = vline
-
-                    vul_statements.append((cnt, c))
-                    cwe.append(c)
-
-            if len(cwe) == 0:
-                cwe.append('Benign')
-
-            df_file_fun['code'] = fun["long_name"] + "".join(fun_block)
-            df_file_fun["fun_name"] = fun["name"]
-            df_file_fun["content"] = (
-                str(vul_statements) if len(vul_statements) > 0 else ""
-            )
-            df_file_fun["isVul"] = 1 if cwe else 0
-            df_file_fun["cwe"] = extract_cwe(cwe)
-
-            df_file = pd.concat([df_file, df_file_fun])
-
-    # drop duplicates and keep a single row
-    df_file = df_file.drop_duplicates(
-        subset=['filename', 'long_name', 'start_line', 'end_line', 'cwe'], keep='last').reset_index(drop=True)
-
-    if set(cols_filter).issubset(set(list(df_file.columns))):
-        df_file = df_file.drop(cols_filter, axis=1)
-    return df_file
-
-
-def project_flaws(df):
-    """find flaw entries of all the complete project scanning each unique file."""
-    df_prj = pd.DataFrame()
-
-    # iterate on every unique file
-    for f in list(set(df.file)):
-        lines = list(df[df.file == f]["line"])
-        print(f"Projecting lines: {lines}")
-
-        cwes = list(df[df.file == f]["cwe"])
-        print(f"Projecting cwes: {cwes}")
-        # vul_statements = list(df_flaw[df_flaw.file==x]['cwe'])
-        # lines = [x[0] if len(x) == 1 else [x[0], x[1]] for x in lines]
-
-        # TODO: check if any of the entries has multiple locations or lines
-        # lines = [x[0] if len(x) == 1 else [x[0], x[1]] for x in lines]
-
-        df_file = extract_functions(f, lines, cwes, tool="cppcheck")
-        df_prj = pd.concat([df_prj, df_file])
-
-    return df_prj.reset_index(drop=True).drop_duplicates()
-
-
-def compose_file_flaws(file, zip_obj=None):
-    """convert zipped file stream - tempfile to pandas dataframe."""
-    file_content = ""
-    df_flaw = pd.DataFrame()
-    df_fun = pd.DataFrame()
-
-    if zip_obj:
-        # io.StringIO(sf.read().decode("utf-8")).read()
-        with zip_obj.open(file) as fc:
-            # file_content = fc.read().encode('UTF-8')
-            file_content = fc.read()
-    else:
-        with open(file) as fc:
-            # use encoding otherwise, flawfinder shows encoding error for some files.
-            file_content = fc.read().encode("utf-8")
-
-    fp = tempfile.NamedTemporaryFile(suffix="_Flawfinder", prefix="Filename_")
-
-    # deal with the temp file of the extracted zipped file
-    try:
-        fp.write(file_content)
-        # fp.seek(0)  # move reader's head to the initial point of the file.
-
-        # merge the results generated by all the tools
-        df_flaw = sect.merge_tools_result(fname=file)
-
-        if len(df_flaw):
-            df_fun = extract_functions(
-                source_file=file,
-                lines=list(df_flaw.line),
-                cwes=list(df_flaw.cwe),
-                context=list(df_flaw.context),
-                tool=list(df_flaw.tool),
-            )
-    except OSError:
-        print("Could not open/read file:", file)
-        sys.exit(1)
-    finally:
-        fp.close()
-    return df_flaw, df_fun
-
-
-def check_internet(url):
-    response = requests.get(url)
-    return True if response.status_code < 400 else False
-
-
-def retrieve_zip(url):
-    """Fetching list of C/C++ files from zip file of the project url."""
-    if check_internet(url):
-        r = requests.get(url)
-        # BytesIO keeps the file in memory
-        return ZipFile(BytesIO(r.content))
-    else:
-        print("Internet is not working!")
-        return None
-
-
-def guess_pl(file, zip_obj=None):
-    """guess the programming language of the input file.
-    Recursively Remove .DS_Store which was introducing encoding error,
-    https://jonbellah.com/articles/recursively-remove-ds-store
-    ignore all files with . start and compiled sources
-    TODO extract .zip file for further flaw finding
-    TODO fix: Empty source code provided
-    """
-    config = {}
-    with open("ext_projects.yaml", "r") as stream:
-        try:
-            config = yaml.safe_load(stream)["save"]
-        except Exception as e:
-            print("Error loading configuration file: " + str(e))
-
-    if config["apply_guesslang"]:
-        guess = Guess()
-        try:
-            if zip_obj != None:
-                # extract a specific file from the zip container
-                with zip_obj.open(file, "r") as f:
-                    lang = guess.language_name(f.read())
-            else:
-                with open(file, "r") as f:
-                    lang = guess.language_name(f.read())
-            return lang.lower()
-        except Exception as e:
-            print(f"Guesslang error: {e}")
-            return "unknown"
-    else:
-        pl = Path(file).suffix.replace(".", "").lower()
-        return pl if pl in pl_list else "unknown"
-
-
-def urlzip2df(url):
-    """concatenate all the output dataframes of all the files"""
-    print("\n" + "-" * 50)
-
-    # initialization of empty dataframes
-    df_flaw_prj = pd.DataFrame()
-    df_fun_prj = pd.DataFrame()
-    selected_files = []
-    zipobj = None
-    fc = 0
-
-    if os.path.isdir(url):
-        print(f"Project dir: {url}\nScanning for flaws (takes a while)....")
-        files = [str(f) for f in Path(url).rglob("*.*")]
-        selected_files = [x for x in files if guess_pl(x) in pl_list]
-
-    else:
-        print(f"Project URL: {url}\nScanning for flaws (takes a while)....")
-        zipobj = retrieve_zip(url)
-        files = zipobj.namelist()
-        selected_files = [x for x in files if guess_pl(x, zipobj) in pl_list]
-
-    if selected_files:
-        # iterate on every unique file
-        for file in list(set(selected_files)):
-            df_flaw_file, df_fun_file = compose_file_flaws(file, zipobj)
-            df_flaw_prj = pd.concat([df_flaw_prj, df_flaw_file])
-            df_fun_prj = pd.concat([df_fun_prj, df_fun_file])
-
-            # verbose on every 100 files
-            if fc % 100 == 0:
-                print(
-                    f"\n#Files: {fc + 1} file(s) completed! \n Continue gathering function metrics....")
-            fc = fc + 1
-
-        print("\n" + "-" * 10 + " Project Report " + "-" * 10)
-        print(f"Shape of the flaws data: {df_flaw_prj.shape}")
-        print(f"Shape of the function level metrics: {df_fun_prj.shape}")
-        df_flaw_prj = df_flaw_prj.reset_index(drop=True)
-        df_fun_prj = df_fun_prj.reset_index(drop=True)
-    else:
-        print(
-            f"No file in the specified project of the given PL list types: {pl_list}")
-
-    return df_flaw_prj, df_fun_prj
-
-
-def show_info(df, name):
-    print(
-        f"\nShape of the {name} metrics of all the projects: {df.shape}")
-    print(
-        f"#vulnerable: {len(df[df.cwe!='Benign'])}")
-    print(
-        f"#benign: {len(df[df.cwe=='Benign'])}\n")
-
-
-def iterate_projects(prj_dir_urls):
-    """iterate on every project"""
-    df_flaw = pd.DataFrame()
-    df_fun = pd.DataFrame()
-
-    for prj in prj_dir_urls:
-        if os.path.isfile(prj) != True or os.path.isdir(prj) != True:
-            df_prj, df_prj_met = urlzip2df(prj)
-            df_flaw = pd.concat([df_flaw, df_prj])
-            df_fun = pd.concat([df_fun, df_prj_met])
+            if len(cwe) == 1:
+                cwe = cwe[0]
         else:
-            print("Non-zipped project!")
-    print("-" * 40)
+            cwe = 'CWE-unknown'
+        return str(cwe)
 
-    print("\n\n" + "=" * 15 + " Final Composite Report " + "=" * 15)
+    def extract_functions(self, source_file, lines, cwes, context, tool=['cppcheck']):
+        """split the given file into a list of function blocks and return their metrics into a dataframe.
+        <guru> I think there is a problem in lizard detecting the correct full_parameters
+        either we have to concatenate two lines of full_parameters or ignore it and take it from long_name if needed.
+        drop['full_parameters', 'fan_in', 'fan_out', 'general_fan_out'] because lizard has not properly
+        implemented these parameters yet.
+        check if the vulnerability content/statement appears in the function block or not.
+        type of the vul line should be int and then lies in the function block.
+        # """
+        df_file = pd.DataFrame()
 
-    if len(df_flaw) > 0 and len(df_fun) > 0:
-        show_info(df_flaw, 'statement-level')
-        show_info(df_fun, 'function-level')
+        # TODO: review this code now
+        with open(source_file, "r", errors="surrogateescape") as fp:
 
-    else:
-        print("The given list of projects doesn't have any specified files to analyze!")
-    print("=" * 50 + "\n")
-    return df_flaw, df_fun
+            source_code = fp.read()
+            liz_file = lizard.analyze_file.analyze_source_code(
+                source_file, source_code)
+
+            for ifun in range(len(liz_file.function_list)):
+                vul_statements = []
+                cwe = []
+
+                fun = liz_file.function_list[ifun].__dict__
+                df_file_fun = pd.DataFrame.from_dict(fun)
+
+                start = int(fun["start_line"])
+                end = int(fun["end_line"])
+                fp.seek(0)  # moves the header to the initial point of the file
+
+                fun_block = [line for line in itertools.islice(fp, start, end)]
+                fp.seek(0)
+
+                # check if any of the lines of the file belong to any functions
+                for index, (l, c, cnt, t) in enumerate(zip(lines, cwes, context, tool)):
+
+                    # checks vulnerability condition
+                    if (isinstance(l, int)) and (start <= l < end):
+                        vline = ''
+                        if t.lower() == "cppcheck" or t.lower() == "rats":
+                            vline = fp.readlines()[l]
+                            fp.seek(0)
+
+                        if vline != '' and cnt != cnt:
+                            cnt = vline
+
+                        vul_statements.append((cnt, c))
+                        cwe.append(c)
+
+                if len(cwe) == 0:
+                    cwe.append('Benign')
+
+                # rename filename to file to make it consistent with the statement table
+                df_file_fun = df_file_fun.rename(columns={"filename": "file"})
+
+                df_file_fun['code'] = fun["long_name"] + "".join(fun_block)
+                df_file_fun["fun_name"] = fun["name"]
+                df_file_fun["content"] = (
+                    str(vul_statements) if len(vul_statements) > 0 else ""
+                )
+                df_file_fun["isVul"] = 1 if cwe else 0
+                df_file_fun["cwe"] = self.extract_cwe(cwe)
+                df_file_fun["project"] = self.url
+
+                df_file = pd.concat([df_file, df_file_fun])
+
+        # drop duplicates and keep a single row
+        df_file = df_file.drop_duplicates(
+            subset=['file', 'long_name', 'start_line', 'end_line', 'cwe'], keep='last').reset_index(drop=True)
+
+        if set(self.cols_filter).issubset(set(list(df_file.columns))):
+            df_file = df_file.drop(self.cols_filter, axis=1)
+        return df_file
+
+    # def project_flaws(self, df):
+    #     """find flaw entries of all the complete project scanning each unique file."""
+    #     df_prj = pd.DataFrame()
+
+    #     # iterate on every unique file
+    #     for f in list(set(df.file)):
+    #         lines = list(df[df.file == f]["line"])
+    #         print(f"Projecting lines: {lines}")
+
+    #         cwes = list(df[df.file == f]["cwe"])
+    #         print(f"Projecting cwes: {cwes}")
+    #         # vul_statements = list(df_flaw[df_flaw.file==x]['cwe'])
+    #         # lines = [x[0] if len(x) == 1 else [x[0], x[1]] for x in lines]
+
+    #         # TODO: check if any of the entries has multiple locations or lines
+    #         # lines = [x[0] if len(x) == 1 else [x[0], x[1]] for x in lines]
+
+    #         df_file = self.extract_functions(f, lines, cwes, tool="cppcheck")
+    #         df_prj = pd.concat([df_prj, df_file])
+
+        return df_prj.reset_index(drop=True).drop_duplicates()
+
+    def compose_file_flaws(self, file, zip_obj=None):
+        """convert zipped file stream - tempfile to pandas dataframe."""
+        file_content = "".encode("utf-8")
+        df_flaw = pd.DataFrame()
+        df_fun = pd.DataFrame()
+
+        if zip_obj:
+            # io.StringIO(sf.read().decode("utf-8")).read()
+            with zip_obj.open(file) as fc:
+                # file_content = fc.read().encode('UTF-8')
+                file_content = fc.read()
+        else:
+            with open(file) as fc:
+                try:
+                    # use encoding otherwise, flawfinder shows encoding error for some files.
+                    file_content = fc.read().encode("utf-8")
+                except UnicodeDecodeError as e:
+                    file_content = fc.read().encode("latin-1")
+                    print(f"UnicodeDecodeError: {e} for file: {file}")
+
+        fp = tempfile.NamedTemporaryFile(suffix="_Flawfinder", prefix="File_")
+
+        # deal with the temp file of the extracted zipped file
+        try:
+            fp.write(file_content)
+            # fp.seek(0)  # move reader's head to the initial point of the file.
+
+            # merge the results generated by all the tools
+            df_flaw = self.sect.merge_tools_result(fname=file)
+
+            if len(df_flaw):
+                df_fun = self.extract_functions(
+                    source_file=file,
+                    lines=list(df_flaw.line),
+                    cwes=list(df_flaw.cwe),
+                    context=list(df_flaw.context),
+                    tool=list(df_flaw.tool),
+                )
+        except OSError:
+            print("Could not open/read file:", file)
+            sys.exit(1)
+        finally:
+            fp.close()
+        return df_flaw, df_fun
+
+    def check_internet(self, url):
+        response = requests.get(self.url)
+        return True if response.status_code < 400 else False
+
+    def retrieve_zip(self, url):
+        """Fetching list of C/C++ files from zip file of the project url."""
+        if check_internet(self.url):
+            r = requests.get(self.url)
+            # BytesIO keeps the file in memory
+            return ZipFile(BytesIO(r.content))
+        else:
+            print("Internet is not working!")
+            return None
+
+    def urlzip2df(self, url):
+        """concatenate all the output dataframes of all the files"""
+        print("\n" + "-" * 50)
+
+        # initialization of empty dataframes
+        df_flaw_prj = pd.DataFrame()
+        df_fun_prj = pd.DataFrame()
+        selected_files = []
+        zipobj = None
+        fc = 0
+        self.url = url
+        stat = self.db.get_status(self.url)
+        print("Scanning for flaws (takes a while)....")
+
+        if os.path.isdir(self.url):
+            files = [str(f) for f in Path(self.url).rglob("*.*")]
+            selected_files = [
+                x for x in files if self.sect.guess_pl(x) in self.sect.pl_list]
+        else:
+            zipobj = self.retrieve_zip(self.url)
+            files = zipobj.namelist()
+            selected_files = [
+                x for x in files if self.sect.guess_pl(x, zipobj) in self.sect.pl_list]
+
+        print(f'#files in the project: {len(selected_files)}')
+
+        # TODO: incremental fetching of the information.
+        if self.db.table_exists('statement'):
+            scanned_files = set(
+                list(pd.read_sql('SELECT file from statement', self.conn)['file']))
+            selected_files = list(set(selected_files) - scanned_files)
+
+            print(f'#files already scanned: {len(scanned_files)}')
+            print(f'#files to scan: {len(selected_files)}')
+
+        if len(selected_files) > 0:
+            # iterate on every unique file
+            for file in list(set(selected_files)):
+                df_flaw_file, df_fun_file = self.compose_file_flaws(
+                    file, zipobj)
+
+                if len(df_flaw_file) > 0 and df_flaw_file.file.isna().any() == False:
+                    # DROP columns if they are not in the table. (for the case of incremental fetching)
+                    # diff_cols = list(
+                    #     set(list(jetson.keys())) - set(list(df.columns)))
+                    # df_jetson.drop(columns=diff_cols, inplace=True)
+
+                    # print("\n" + "-" * 10 + " File Report " + "-" * 10)
+                    df_flaw_file = df_flaw_file.astype(str)
+                    df_flaw_file['project'] = self.url
+
+                    # print(f"\nflaw: \n{df_flaw_file}")
+                    # print(f"Shape of the flaw: {df_flaw_file.shape}")
+                    # print(f"Columns in the file: {df_flaw_file.columns}")
+
+                    df_flaw_file.to_sql('statement', con=self.conn,
+                                        if_exists='append', index=False)
+                    # Change project status:
+                    self.db.change_status(self.url, 'In Progress')
+
+                    # df_flaw_prj = pd.concat([df_flaw_prj, df_flaw_file])
+                # else:
+                    # print(f"No flaw in the file: {file} or file is empty!")
+
+                if len(df_fun_file) > 0:
+                    df_fun_file = df_fun_file.astype(str)
+                    df_fun_file['project'] = self.url
+                    # print(f"\nfunction: \n{df_fun_file}")
+                    # print(f"Shape of the function: {df_fun_file.shape}")
+
+                    df_fun_file.to_sql('function', con=self.conn,
+                                       if_exists='append', index=False)
+                    # df_fun_prj = pd.concat([df_fun_prj, df_fun_file])
+
+                # verbose on every 100 files
+                if fc % 100 == 0:
+                    print(f"\n#Files: {fc + 1} file(s) completed!")
+                    print("Continue gathering function metrics....\n")
+                fc = fc + 1
+
+            print("\n" + "-" * 10 + " Project Report " + "-" * 10)
+            # df_flaw_prj = df_flaw_prj.reset_index(drop=True)
+            # df_fun_prj = df_fun_prj.reset_index(drop=True)
+            self.db.show_shape('statement', project=self.url)
+            self.db.show_shape('function', project=self.url)
+
+        else:
+            print(f"No file in the specified project \
+                    of the given PL list types: {pl_list}")
+
+        # Change the project status to complete
+        self.db.change_status(self.url, 'Complete')
+        self.db.get_status(self.url)
+        # return df_flaw_prj, df_fun_prj
+
+    def show_info_pd(df, name):
+        print(
+            f"\nShape of the {name}-level metrics of all the projects: {df.shape}")
+        print(
+            f"#vulnerable: {len(df[df.cwe!='Benign'])}")
+        print(
+            f"#benign: {len(df[df.cwe=='Benign'])}\n")
+
+    def iterate_projects(self, prj_dir_urls):
+        """iterate on every project"""
+        df_flaw = pd.DataFrame()
+        df_fun = pd.DataFrame()
+
+        self.db.create_project_table()
+
+        for prj in prj_dir_urls:
+            if self.db.get_status(prj) == 'Complete':
+                print(f"Project: {prj} had been already scanned!")
+            else:
+                if os.path.isfile(prj) == False or os.path.isdir(prj) == False:
+                    self.urlzip2df(prj)
+                    # df_prj, df_prj_met = urlzip2df(prj)
+                    # df_flaw = pd.concat([df_flaw, df_prj])
+                    # df_fun = pd.concat([df_fun, df_prj_met])
+                else:
+                    print("Non-zipped project!")
+
+        print("-" * 50)
+        print("\n\n" + "=" * 15 + " Final Composite Report " + "=" * 15)
+
+        if len(df_flaw) > 0 and len(df_fun) > 0:
+            self.show_info(df_flaw, 'statement')
+            self.show_info(df_fun, 'function')
+        else:
+            print(
+                "The given list of projects doesn't have any specified files to analyze!")
+        print("=" * 50 + "\n")
+        return df_flaw, df_fun
 
 
 if __name__ == "__main__":
@@ -338,16 +368,18 @@ if __name__ == "__main__":
         if os.path.exists(flaw_file) or os.path.exists(metric_file):
             print(
                 f"The flaw/metric data file you want to create already \
-                    exists: {flaw_file}/{metric_file}\n provide another filename"
+                    exists: {flaw_file}/{metric_file}\n provide another \
+                        filename or set override=True in the config file."
             )
             exit(0)
 
-    df_flaw, df_fun = iterate_projects(config["projects"])
+    scan = Scanner()
+    df_flaw, df_fun = scan.iterate_projects(config["projects"])
 
     print("=" * 50)
     if len(df_fun):
         df_fun.to_csv(metric_file, index=False, errors="replace")
-        print(f"The fun-level data is saved at {metric_file}")
+        print(f"The fun-level data is saved at: {metric_file}")
 
     if len(df_flaw):
         # df_flaw.to_csv(flaw_file, index=False)
@@ -359,10 +391,10 @@ if __name__ == "__main__":
 
         # remove duplicates
         df_flaw = drop_rows(df_flaw)  # mutates df
-        show_info(df_flaw, 'statement-level with benign')
+        scan.show_info(df_flaw, 'statement-level with benign')
 
         df_flaw.to_csv(flaw_file, index=False)
         print(
-            f"The statement-level data with newly added benign samples is saved at {flaw_file}")
+            f"The statement-level data with benign samples are at: {flaw_file}")
 
     print("=" * 50)
