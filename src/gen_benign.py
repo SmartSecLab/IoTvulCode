@@ -18,95 +18,98 @@ import yaml
 warnings.filterwarnings("ignore")
 
 
-def get_benign_context(row):
-    """
-    filter all lines if it is less than min threshold
-    randomly shuffled lines
-    """
-    config = yaml.safe_load(open("ext_projects.yaml"))
+class GenerateBenign():
+    def __init__(self):
+        self.config = yaml.safe_load(open("ext_projects.yaml"))
 
-    threshold = config["save"]["threshold_lines"]
-    benign_ratio = config["save"]["benign_ratio"]
-    seed = config["save"]["seed"]
+    def get_benign_context(self, row):
+        """
+        filter all lines if it is less than min threshold
+        randomly shuffled lines
+        """
+        threshold = self.config["save"]["threshold_lines"]
+        benign_ratio = self.config["save"]["benign_ratio"]
+        seed = self.config["save"]["seed"]
 
-    df = pd.DataFrame()
-    # threshold 7 to filter short functions
-    lines = [x for x in enumerate(
-        row["code"].splitlines()) if len(x[1]) > threshold]
+        df = pd.DataFrame()
 
-    # randomly shuffle lines and takes 1/4 of the total number of lines.
-    random.seed(seed)
-    lines = random.sample(population=lines, k=int(len(lines) * benign_ratio))
+        # threshold 7 to filter short functions
+        lines = [x for x in enumerate(
+            row["code"].splitlines()) if len(x[1]) > threshold]
 
-    # TODO: remove the ambiguous vul line from the 'benign' lines if present
-    # vul_line = df.line[i]
-    # lines = [x for x in lines if x[0]!=vul_line]
+        # randomly shuffle lines and takes 1/4 of the total number of lines.
+        random.seed(seed)
+        lines = random.sample(
+            population=lines, k=int(len(lines) * benign_ratio))
 
-    # convert it to dataframe and add additional columns
-    df = pd.DataFrame(data=lines, columns=["line", "context"])
+        # TODO: remove the ambiguous vul line from the 'benign' lines if present
+        # vul_line = df.line[i]
+        # lines = [x for x in lines if x[0]!=vul_line]
 
-    # remove leading and trailing whitespace
-    df["context"] = df["context"].apply(
-        lambda x: re.sub(r"\s+", " ", x).strip())
-    df["cwe"] = "Benign"
-    df["tool"] = "sampling"
-    df["file"] = row["filename"]
+        # convert it to dataframe and add additional columns
+        df = pd.DataFrame(data=lines, columns=["line", "context"])
 
-    line_col = df["line"].astype(int) + int(row["start_line"])
-    max_line = max(list(line_col)) if list(line_col) else 0
-    end_line = int(row["end_line"])
+        # remove leading and trailing whitespace
+        df["context"] = df["context"].apply(
+            lambda x: re.sub(r"\s+", " ", x).strip())
+        df["cwe"] = "Benign"
+        df["tool"] = "sampling"
+        df["file"] = row["file"]
 
-    # print(f"max of lines: {max_line} and end_line: {end_line}")
-    assert max_line <= end_line, "Line number shouldn't exceed function length!"
-    df["line"] = line_col
-    return df
+        line_col = df["line"].astype(int) + int(row["start_line"])
+        max_line = max(list(line_col)) if list(line_col) else 0
+        end_line = int(row["end_line"])
 
+        # print(f"max of lines: {max_line} and end_line: {end_line}")
+        assert max_line <= end_line, "Line number shouldn't exceed function length!"
+        df["line"] = line_col
+        return df
 
-def gen_benign(dfm):
-    """create benign samples to the dataframe"""
-    print("-" * 50)
-    print("Generating benign samples (wait)...")
-    df_fun = pd.DataFrame()
+    def gen_benign(self, dfm):
+        """create benign samples to the dataframe"""
+        # print("-" * 50)
+        # print("Generating benign samples (wait)...")
+        df_fun = pd.DataFrame()
 
-    for i in range(len(dfm)):
-        df_get = get_benign_context(dict(dfm.iloc[i]))
-        df_fun = df_fun.append(df_get).reset_index(drop=True)
+        for i in range(len(dfm)):
+            df_get = self.get_benign_context(dict(dfm.iloc[i]))
+            df_fun = df_fun.append(df_get).reset_index(drop=True)
 
-    print("#Benign samples generated: ", len(df_fun))
-    print("-" * 50)
-    return df_fun
+        # print("#Benign samples generated: ", len(df_fun))
+        # print("-" * 50)
+        return df_fun
 
+    def drop_rows(df):
+        """apply several filters to the dataframe"""
+        df["context"] = df["context"].apply(
+            lambda x: re.sub(r"\s+", " ", str(x)).strip())
 
-def drop_rows(df):
-    """apply several filters to the dataframe"""
-    df["context"] = df["context"].apply(
-        lambda x: re.sub(r"\s+", " ", str(x)).strip())
+        # Step 1: drop duplicates from all rows
+        len_s0 = len(df)
+        df = df.drop_duplicates(
+            subset=["cwe", "context"]).reset_index(drop=True)
+        len_s1 = len(df)
+        print(f"{len_s0-len_s1} duplicate samples were dropped from {len_s0} samples.")
 
-    # Step 1: drop duplicates from all rows
-    len_s0 = len(df)
-    df = df.drop_duplicates(subset=["cwe", "context"]).reset_index(drop=True)
-    len_s1 = len(df)
-    print(f"{len_s0-len_s1} duplicate samples were dropped from {len_s0} samples.")
+        # Step 2: drop duplicates from ambiguous rows on the context column
+        # (keeping only a first occurrence, i.e, vul/cwe sample)
+        df = (
+            df.sort_values(by="cwe", ascending=True)
+            .drop_duplicates(subset="context", keep="first")
+            .reset_index(drop=True)
+        )
 
-    # Step 2: drop duplicates from ambiguous rows on the context column
-    # (keeping only a first occurrence, i.e, vul/cwe sample)
-    df = (
-        df.sort_values(by="cwe", ascending=True)
-        .drop_duplicates(subset="context", keep="first")
-        .reset_index(drop=True)
-    )
+        print(f"{len_s1-len(df)} ambiquous samples were dropped from {len_s1} samples.")
+        print("-" * 50)
+        return df
 
-    print(f"{len_s1-len(df)} ambiquous samples were dropped from {len_s1} samples.")
-    print("-" * 50)
-    return df
-
-
-def save_binary(filename, dfs):
-    """save a dataframe to a binary file"""
-    dfs["isMalicious"] = dfs["cwe"].apply(lambda x: 1 if x != "benign" else 0)
-    dfs = dfs.rename(columns={"context": "code"})
-    dfs[["code", "isMalicious"]].to_csv(filename, index=False)
-    return dfs[["code", "isMalicious"]]
+    def save_binary(filename, dfs):
+        """save a dataframe to a binary file"""
+        dfs["isMalicious"] = dfs["cwe"].apply(
+            lambda x: 1 if x != "benign" else 0)
+        dfs = dfs.rename(columns={"context": "code"})
+        dfs[["code", "isMalicious"]].to_csv(filename, index=False)
+        return dfs[["code", "isMalicious"]]
 
 
 if __name__ == "__main__":

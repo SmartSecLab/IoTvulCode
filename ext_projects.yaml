@@ -11,7 +11,9 @@ projects: [
     "data/projects/contiki-2.4/core",
     "data/projects/linux-rpi-6.1.y/kernel/trace",
   ]
+  
 save:
+  database: "data/IoT"
   statement: "data/raspberryZip_statement.csv"
   function: "data/raspberryZip_function.csv"
   override: True # override the existing files
