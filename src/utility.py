@@ -18,7 +18,7 @@ import yaml
 warnings.filterwarnings("ignore")
 
 
-class GenerateBenign():
+class Utility():
     def __init__(self):
         self.config = yaml.safe_load(open("ext_projects.yaml"))
 
@@ -79,29 +79,43 @@ class GenerateBenign():
         # print("-" * 50)
         return df_fun
 
-    def drop_rows(df):
+    def filter_results(self, df):
         """apply several filters to the dataframe"""
-        df["context"] = df["context"].apply(
-            lambda x: re.sub(r"\s+", " ", str(x)).strip())
+        print("\n" + "-" * 50)
+        code_col = "code"
+
+        if 'context' in list(df.columns):
+            code_col = 'context'
+            df[code_col] = df[code_col].apply(
+                lambda x: re.sub(r"\s+", " ", str(x)).strip())
 
         # Step 1: drop duplicates from all rows
         len_s0 = len(df)
         df = df.drop_duplicates(
-            subset=["cwe", "context"]).reset_index(drop=True)
+            subset=["cwe", code_col]).reset_index(drop=True)
         len_s1 = len(df)
-        print(f"{len_s0-len_s1} duplicate samples were dropped from {len_s0} samples.")
+        print(
+            f"Total {len_s0-len_s1} duplicate samples were dropped from {len_s0} samples.")
 
         # Step 2: drop duplicates from ambiguous rows on the context column
         # (keeping only a first occurrence, i.e, vul/cwe sample)
         df = (
             df.sort_values(by="cwe", ascending=True)
-            .drop_duplicates(subset="context", keep="first")
+            .drop_duplicates(subset=code_col, keep="first")
             .reset_index(drop=True)
         )
-
-        print(f"{len_s1-len(df)} ambiquous samples were dropped from {len_s1} samples.")
-        print("-" * 50)
+        print(
+            f"Total {len_s1-len(df)} ambiquous samples were dropped from {len_s1} samples.")
+        print("-" * 50 + "\n")
         return df
+
+    def show_info_pd(self, df, name):
+        print(
+            f"\nShape of the {name}-level metrics of all the projects: {df.shape}")
+        print(
+            f"#vulnerable: {len(df[df.cwe!='Benign'])}")
+        print(
+            f"#benign: {len(df[df.cwe=='Benign'])}\n")
 
     def save_binary(filename, dfs):
         """save a dataframe to a binary file"""
@@ -150,5 +164,5 @@ if __name__ == "__main__":
     df = df.append(df_fun).reset_index(drop=True)
 
     # remove duplicates
-    df = drop_rows(df)  # mutates df
+    df = filter_results(df)  # mutates df
     dfs = save_binary(binary_file, df)

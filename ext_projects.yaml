@@ -1,5 +1,8 @@
 # config file for data extraction from different IoT projects:
 projects: [
+    "data/projects/contiki-2.4/core",
+    "data/projects/linux-rpi-6.1.y/kernel/trace",
+  ]
     # "data/projects/contiki-2.4/apps",
     # "https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download",
     # "https://github.com/contiki-os/contiki/archive/refs/heads/master.zip",
@@ -8,9 +11,6 @@ projects: [
     # "https://github.com/SmartSecLab/ENViSEC/archive/refs/heads/main.zip",
     # "/Users/guru/research/contiki-master",
     # "/Users/guru/research/contiki-master/apps/webbrowser/",
-    "data/projects/contiki-2.4/core",
-    "data/projects/linux-rpi-6.1.y/kernel/trace",
-  ]
   
 save:
   database: "data/IoT"
@@ -21,3 +21,4 @@ save:
   threshold_lines: 5
   benign_ratio: 0.25
   seed: 0
+  drop_dup: True

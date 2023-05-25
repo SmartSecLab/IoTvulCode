@@ -28,7 +28,7 @@ from guesslang import Guess
 from pylibsrcml import srcml
 
 # User defined modules
-from src.gen_benign import GenerateBenign
+from src.utility import Utility
 # from src.gen_benign import drop_rows, gen_benign
 # import (self.conn, change_status, get_status, query_project_table, show_shape, table_exists)
 from src.sqlite import Database
@@ -49,7 +49,7 @@ class Scanner:
         self.sect = SecTools()
         self.db = Database()
         self.conn = self.db.conn
-        self.ben = GenerateBenign()
+        self.util = Utility()
 
 # ================= Process CWE ==================================
     def extract_cwe(self, cwe) -> str:
@@ -249,7 +249,7 @@ class Scanner:
 
                     # Add benign samples to the statement-level data
                     if len(df_fun_file) > 0:
-                        df_benign = self.ben.gen_benign(df_fun_file)
+                        df_benign = self.util.gen_benign(df_fun_file)
                         df_flaw_file = pd.concat([df_flaw_file, df_benign])
 
                     df_flaw_file['project'] = self.url
@@ -293,15 +293,10 @@ class Scanner:
         # self.db.get_status(self.url)
         # return df_flaw_prj, df_fun_prj
 
-    def show_info_pd(df, name):
-        print(
-            f"\nShape of the {name}-level metrics of all the projects: {df.shape}")
-        print(
-            f"#vulnerable: {len(df[df.cwe!='Benign'])}")
-        print(
-            f"#benign: {len(df[df.cwe=='Benign'])}\n")
 
 # ================= Scan Every Project ==================================
+
+
     def iterate_projects(self, prj_dir_urls):
         """iterate on every project"""
         df_flaw = pd.DataFrame()
@@ -343,6 +338,31 @@ class Scanner:
         return df_flaw, df_fun
 
 
+# ================= Refine Data ==================================
+
+    def refine_data(self, table_name):
+        """refine the data, and filter out duplicates"""
+        df = pd.read_sql(f"SELECT * FROM {table_name}", con=self.db.conn)
+        print("\n\n" + "="*15 + f" Refining Data: {table_name} " + "="*20)
+        print('Before filtering:')
+        self.util.show_info_pd(df, table_name)
+
+        # filter the results
+        df = self.util.filter_results(df)
+
+        print('After filtering:')
+        self.util.show_info_pd(df, table_name)
+        print("="*50)
+        print("\n" + "-"*50)
+        df.to_sql(table_name,
+                  con=self.conn,
+                  if_exists='replace',
+                  index=False)
+        print(f"Table: [{table_name}] is updated!")
+        print("-"*50 + "\n")
+        return df
+
+
 if __name__ == "__main__":
     # The list of the URL links of the project zip files.
     config = yaml.safe_load(open("ext_projects.yaml"))
@@ -360,19 +380,6 @@ if __name__ == "__main__":
         exit(0)
 
     scan = Scanner()
-    df_flaw, df_fun = scan.iterate_projects(config["projects"])
-
-    if len(df_flaw):
-        # Generating benign statements...
-        df_flaw_benign = gen_benign(df_fun)
-        df_flaw = df_flaw.append(df_flaw_benign).reset_index(drop=True)
-
-        # remove duplicates
-        df_flaw = drop_rows(df_flaw)  # mutates df
-        scan.show_info(df_flaw, 'statement-level with benign')
-
-        df_flaw.to_csv(flaw_file, index=False)
-        print(
-            f"The statement-level data with benign samples are at: {flaw_file}")
-
-    print("=" * 50)
+    scan.iterate_projects(config["projects"])
+    scan.refine_data('statement')
+    scan.refine_data('function')
