@@ -243,30 +243,35 @@ class Scanner:
                 df_flaw_file, df_fun_file = self.compose_file_flaws(
                     file, zipobj)
 
-                if len(df_flaw_file) > 0 and df_flaw_file.file.isna().any() == False:
+                try:
+                    if len(df_flaw_file) > 0 and df_flaw_file.file.isna().any() == False:
 
-                    df_flaw_file = df_flaw_file.astype(str)
+                        df_flaw_file = df_flaw_file.astype(str)
 
-                    # Add benign samples to the statement-level data
+                        # Add benign samples to the statement-level data
+                        if len(df_fun_file) > 0:
+                            df_benign = self.util.gen_benign(df_fun_file)
+                            df_flaw_file = pd.concat([df_flaw_file, df_benign])
+
+                        df_flaw_file['project'] = self.url
+
+                        df_flaw_file.to_sql('statement', con=self.conn,
+                                            if_exists='append', index=False)
+
+                        # Change status to 'In Progress' once if it is 'Not Started'
+                        if change_stat:
+                            self.db.change_status(self.url, "In Progress")
+                            change_stat = False
+
                     if len(df_fun_file) > 0:
-                        df_benign = self.util.gen_benign(df_fun_file)
-                        df_flaw_file = pd.concat([df_flaw_file, df_benign])
+                        df_fun_file = df_fun_file.astype(str)
+                        df_fun_file['project'] = self.url
+                        df_fun_file.to_sql('function', con=self.conn,
+                                           if_exists='append', index=False)
 
-                    df_flaw_file['project'] = self.url
-
-                    df_flaw_file.to_sql('statement', con=self.conn,
-                                        if_exists='append', index=False)
-
-                    # Change status to 'In Progress' once if it is 'Not Started'
-                    if change_stat:
-                        self.db.change_status(self.url, "In Progress")
-                        change_stat = False
-
-                if len(df_fun_file) > 0:
-                    df_fun_file = df_fun_file.astype(str)
-                    df_fun_file['project'] = self.url
-                    df_fun_file.to_sql('function', con=self.conn,
-                                       if_exists='append', index=False)
+                # TODO: handle the exception
+                except Exception as e:
+                    print(f"Error: {e} for file: {file}")
 
                 # verbose on every 100 files
                 if fc % 100 == 0:
@@ -295,7 +300,6 @@ class Scanner:
 
 
 # ================= Scan Every Project ==================================
-
 
     def iterate_projects(self, prj_dir_urls):
         """iterate on every project"""
@@ -339,6 +343,7 @@ class Scanner:
 
 
 # ================= Refine Data ==================================
+
 
     def refine_data(self, table_name):
         """refine the data, and filter out duplicates"""

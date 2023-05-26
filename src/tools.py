@@ -284,7 +284,8 @@ class SecTools:
                                        axis=1, errors="ignore")
             # print(f"columns of merged dataframe: \n{df_merged.columns}")
 
-            # add severity column if not present in the merged dataframe.
+            # =================================ADD===============================
+            # ADD severity column if not present in the merged dataframe.
             if 'severity' not in list(df_merged.columns):
                 df_merged['severity'] = '-'
             if 'category' not in list(df_merged.columns):
@@ -308,22 +309,23 @@ class SecTools:
             if 'type' not in list(df_merged.columns):
                 df_merged['type'] = '-'
 
+            # ================================REMOVE================================
+            # REMOVE columns if present in the merged dataframe.
+            # if table statement has column named inconclusive
+            if 'inconclusive' in list(df_merged.columns):
+                df_merged = df_merged.drop(
+                    columns=['inconclusive'], axis=1, errors="ignore")
+
             # if 'defaultlevel' is in list(df_merged.columns):
             #     df_merged = df_merged.drop(columns=['defaultlevel'], axis=1, errors="ignore")
-            # print(
-            #     f"Columns after adding dummies: \n{df_merged.columns}")
 
+            # ==============================FILTER NAN==================================
             # Necessary columns
             df_merged = df_merged[df_merged["line"].notna()]
             df_merged = df_merged[df_merged["cwe"].notna()]
 
             # '-' for empty cells
             df_merged = df_merged.fillna("-")
-
-            # print(
-            #     f"Merged dataframe: \n{df_merged[['line', 'defaultlevel', 'level', 'severity', 'cwe']]}")
-            # print("==" * 30)
-
         return df_merged
 
 
