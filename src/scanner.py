@@ -25,14 +25,13 @@ import requests
 import seaborn as sns
 import yaml
 from guesslang import Guess
+from humanfriendly import format_timespan
 from pylibsrcml import srcml
 
-# User defined modules
-from src.utility import Utility
-# from src.gen_benign import drop_rows, gen_benign
-# import (self.conn, change_status, get_status, query_project_table, show_shape, table_exists)
 from src.sqlite import Database
 from src.tools import SecTools
+# User defined modules
+from src.utility import Utility
 
 
 class Scanner:
@@ -50,6 +49,7 @@ class Scanner:
         self.db = Database()
         self.conn = self.db.conn
         self.util = Utility()
+        self.start_time = time.time()
 
 # ================= Process CWE ==================================
     def extract_cwe(self, cwe) -> str:
@@ -185,17 +185,22 @@ class Scanner:
         return df_flaw, df_fun
 
     def check_internet(self, url):
-        response = requests.get(self.url)
-        return True if response.status_code < 400 else False
+        """check if the internet is working or not."""
+        try:
+            response = requests.get(self.url)
+            return True if response.status_code < 400 else False
+        except Exception as e:
+            print(f"Invalid URL! {e}")
+            return False
 
     def retrieve_zip(self, url):
         """Fetching list of C/C++ files from zip file of the project url."""
-        if check_internet(self.url):
+        if self.check_internet(self.url):
             r = requests.get(self.url)
             # BytesIO keeps the file in memory
             return ZipFile(BytesIO(r.content))
         else:
-            print("Internet is not working!")
+            print("Internet is not working or the URL is Invalid!")
             return None
 
 # ================= Convert Project to DB ==================================
@@ -218,9 +223,13 @@ class Scanner:
                 x for x in files if self.sect.guess_pl(x) in self.sect.pl_list]
         else:
             zipobj = self.retrieve_zip(self.url)
-            files = zipobj.namelist()
-            selected_files = [
-                x for x in files if self.sect.guess_pl(x, zipobj) in self.sect.pl_list]
+            if zipobj != None:
+                files = zipobj.namelist()
+                selected_files = [
+                    x for x in files if self.sect.guess_pl(x, zipobj) in self.sect.pl_list]
+            else:
+                print("Invalid URL!")
+                return None
 
         print(f'#files in the project: {len(selected_files)}')
 
@@ -276,7 +285,9 @@ class Scanner:
                 # verbose on every 100 files
                 if fc % 100 == 0:
                     print(f"\n#Files: {fc + 1} file(s) completed!")
-                    print("Continue gathering function metrics....\n")
+                    time_elapsed = time.time() - self.start_time
+                    print(f"Time elapsed: {format_timespan(time_elapsed)}")
+                    print("Continue gathering....\n")
 
                 fc = fc + 1
 
@@ -291,15 +302,11 @@ class Scanner:
         else:
             print(f"No file in the specified project \
                     of the given PL list types: {pl_list}")
-
-        # Change the project status to complete
-        self.db.change_status(self.url, 'Complete')
-
-        # self.db.get_status(self.url)
-        # return df_flaw_prj, df_fun_prj
+        return True
 
 
 # ================= Scan Every Project ==================================
+
 
     def iterate_projects(self, prj_dir_urls):
         """iterate on every project"""
@@ -316,8 +323,13 @@ class Scanner:
                 print(f"The project had been already scanned!")
 
             elif stat == 'Not Started' or stat == 'In Progress':
-                if os.path.isfile(prj) == False or os.path.isdir(prj) == False:
-                    self.project2db(prj, stat)
+                # if os.path.isfile(prj) == False or os.path.isdir(prj) == False:
+
+                # extract the project directory/URL
+                success = self.project2db(prj, stat)
+                if success == True:
+                    # Change the project status to complete
+                    self.db.change_status(self.url, 'Complete')
                 else:
                     print("Non-zipped project!")
             else:
@@ -339,11 +351,8 @@ class Scanner:
         self.conn.commit()
         self.db.cursor.close()
 
-        return df_flaw, df_fun
-
 
 # ================= Refine Data ==================================
-
 
     def refine_data(self, table_name):
         """refine the data, and filter out duplicates"""
@@ -386,5 +395,16 @@ if __name__ == "__main__":
 
     scan = Scanner()
     scan.iterate_projects(config["projects"])
+
+    # Refine the data
+    start_time = time.time()
     scan.refine_data('statement')
     scan.refine_data('function')
+    time_elapsed = time.time() - start_time
+    print(f"Time elapsed for filtering: {format_timespan(time_elapsed)}")
+
+    # total time elapsed
+    time_elapsed = time.time() - scan.start_time
+    print("\n" + "="*50)
+    print(f"Total time elapsed: {format_timespan(time_elapsed)}")
+    print("="*50)

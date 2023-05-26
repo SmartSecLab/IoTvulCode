@@ -20,7 +20,12 @@ warnings.filterwarnings("ignore")
 
 class Utility():
     def __init__(self):
-        self.config = yaml.safe_load(open("ext_projects.yaml"))
+        self.config = {}
+        with open("ext_projects.yaml", "r") as stream:
+            try:
+                self.config = yaml.safe_load(stream)
+            except Exception as e:
+                print("Error loading configuration file: " + str(e))
 
     def get_benign_context(self, row):
         """

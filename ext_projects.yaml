@@ -11,14 +11,16 @@ projects: [
     # "https://github.com/SmartSecLab/ENViSEC/archive/refs/heads/main.zip",
     # "/Users/guru/research/contiki-master",
     # "/Users/guru/research/contiki-master/apps/webbrowser/",
-  
+    # data/projects/contiki-2.4/cpu/cc2430/dev,
+
 save:
   database: "data/IoT"
   statement: "data/raspberryZip_statement.csv"
   function: "data/raspberryZip_function.csv"
   override: True # override the existing files
-  apply_guesslang: False # do you want to use guess lang to classify files or use extension?
   threshold_lines: 5
   benign_ratio: 0.25
   seed: 0
   drop_dup: True
+  apply_guesslang: False # do you want to use guess lang to classify files or use extension?  
+
