@@ -17,23 +17,26 @@ import warnings
 from pathlib import Path
 from string import printable
 
-import keras
+# import keras
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from keras import backend as K
-from keras import regularizers
-from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-from keras.layers import (ELU, LSTM, BatchNormalization, Bidirectional,
-                          Convolution1D, Convolution2D, Embedding, Input,
-                          MaxPooling1D, MaxPooling2D, SimpleRNN, concatenate)
-from keras.layers.core import Activation, Dense, Dropout, Flatten, Lambda
-from keras.models import Model, Sequential, load_model, model_from_json
-from keras.optimizers import SGD, Adam, RMSprop
-from keras.preprocessing import sequence
-from keras.utils import np_utils
-from keras_metrics import metrics as km
+
+from tensorflow.keras import backend as K
+from tensorflow.keras import regularizers
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
+from tensorflow.keras.layers import (ELU, LSTM, BatchNormalization, Bidirectional,
+                                     Convolution1D, Convolution2D, Embedding, Input,
+                                     MaxPooling1D, MaxPooling2D, SimpleRNN, concatenate)
+from tensorflow.keras.layers import Activation, Dense, Dropout, Flatten, Lambda
+from tensorflow.keras.models import Model, Sequential, load_model, model_from_json
+from tensorflow.keras.optimizers import SGD, Adam, RMSprop
+from tensorflow.keras.preprocessing import sequence
+
+
+# from keras_metrics import metrics as km
+
 from matplotlib import pyplot
 from nltk.tokenize.regexp import WhitespaceTokenizer
 from sklearn import model_selection
@@ -47,7 +50,7 @@ from sklearn.preprocessing import FunctionTransformer
 warnings.filterwarnings("ignore")
 
 
-class Classifier:
+class ModelArchs:
     def __init__(self, config):
 
         # function arguments:
@@ -126,7 +129,8 @@ class Classifier:
         )(Emb_Layer)
         # <guru> I think the activation function should be 'sigmoid' here
         # for binary classification???
-        Emb_Layer = Dense(55, activation="softmax")(Emb_Layer)  # iDetech original
+        Emb_Layer = Dense(55, activation="softmax")(
+            Emb_Layer)  # iDetech original
         # Emb_Layer = Dense(2, activation="sigmoid")(Emb_Layer)
 
         # apply RNN model settings
@@ -142,7 +146,8 @@ class Classifier:
         Training Model 2 - 1D Convolutions and Fully Connected Layers
         """
         # Input
-        main_input = Input(shape=(self.max_len,), dtype="int32", name="main_input")
+        main_input = Input(shape=(self.max_len,),
+                           dtype="int32", name="main_input")
 
         # Embedding layer
         # emb = Embedding(input_dim=max_vocab_len, output_dim=emb_dim, input_length=max_len,
@@ -221,7 +226,8 @@ class Classifier:
         model = Sequential()
         # First LSTM layer defining the input sequence length
         model.add(
-            LSTM(input_shape=(self.input_dim, 1), units=32, return_sequences=True)
+            LSTM(input_shape=(self.input_dim, 1),
+                 units=32, return_sequences=True)
         )
         model.add(Dropout(self.dropout))
 
@@ -271,7 +277,8 @@ class Classifier:
 
         transformer = FunctionTransformer(preprocess4RF)
         token_pattern = r"""([A-Za-z_]\w*\b|[!\#\$%\&\*\+:\-\./<=>\?@\\\^_\|\~]+|[ \t\(\),;\{\}\[\]"'`])"""
-        vectorizer = TfidfVectorizer(token_pattern=token_pattern, max_features=3000)
+        vectorizer = TfidfVectorizer(
+            token_pattern=token_pattern, max_features=3000)
 
         # Dataset split for training and testing.
         code_train, code_test, tag_train, tag_test = train_test_split(
@@ -285,9 +292,9 @@ class Classifier:
         clf = RandomForestClassifier(n_jobs=4)
 
         model = Pipeline(
-            [("preprocessing", transformer), ("vectorizer", vectorizer), ("clf", clf)]
+            [("preprocessing", transformer),
+             ("vectorizer", vectorizer), ("clf", clf)]
         )
-
 
         # Setting of the best parameters
         best_params = {

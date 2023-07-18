@@ -1,20 +1,11 @@
 pandas==1.4.0
 requests==2.28.1
 absl-py==0.15.0
-appnope @ file:///home/conda/feedstock_root/build_artifacts/appnope_1649077682618/work
-asttokens @ file:///home/conda/feedstock_root/build_artifacts/asttokens_1670263926556/work
 astunparse==1.6.3
-backcall @ file:///home/conda/feedstock_root/build_artifacts/backcall_1592338393461/work
-backports.functools-lru-cache @ file:///home/conda/feedstock_root/build_artifacts/backports.functools_lru_cache_1618230623929/work
 cachetools==5.3.0
 certifi==2022.12.7
-charset-normalizer==3.0.1
-comm @ file:///home/conda/feedstock_root/build_artifacts/comm_1670575068857/work
 contourpy==1.0.7
 cycler==0.11.0
-debugpy @ file:///Users/runner/miniforge3/conda-bld/debugpy_1674522438732/work
-decorator @ file:///home/conda/feedstock_root/build_artifacts/decorator_1641555617451/work
-executing @ file:///home/conda/feedstock_root/build_artifacts/executing_1667317341051/work
 flatbuffers==1.12
 fonttools==4.38.0
 gast==0.4.0
@@ -25,12 +16,6 @@ grpcio==1.34.1
 guesslang==2.2.1
 h5py==3.1.0
 idna==3.4
-importlib-metadata @ file:///home/conda/feedstock_root/build_artifacts/importlib-metadata_1672612343532/work
-ipykernel @ file:///Users/runner/miniforge3/conda-bld/ipykernel_1675370199538/work
-ipython @ file:///Users/runner/miniforge3/conda-bld/ipython_1676047761112/work
-jedi @ file:///home/conda/feedstock_root/build_artifacts/jedi_1669134318875/work
-jupyter_client @ file:///home/conda/feedstock_root/build_artifacts/jupyter_client_1675178684608/work
-jupyter_core @ file:///Users/runner/miniforge3/conda-bld/jupyter_core_1675109937473/work
 keras-nightly==2.5.0.dev2021032900
 Keras-Preprocessing==1.1.2
 kiwisolver==1.4.4
@@ -38,38 +23,21 @@ lizard==1.17.10
 Markdown==3.4.1
 MarkupSafe==2.1.2
 matplotlib==3.6.3
-matplotlib-inline @ file:///home/conda/feedstock_root/build_artifacts/matplotlib-inline_1660814786464/work
-nest-asyncio @ file:///home/conda/feedstock_root/build_artifacts/nest-asyncio_1664684991461/work
 numpy==1.19.5
 oauthlib==3.2.2
 opt-einsum==3.3.0
-packaging @ file:///home/conda/feedstock_root/build_artifacts/packaging_1673482170163/work
-pandas==1.4.1
-parso @ file:///home/conda/feedstock_root/build_artifacts/parso_1638334955874/work
-pexpect @ file:///home/conda/feedstock_root/build_artifacts/pexpect_1667297516076/work
-pickleshare @ file:///home/conda/feedstock_root/build_artifacts/pickleshare_1602536217715/work
 Pillow==9.4.0
-platformdirs @ file:///home/conda/feedstock_root/build_artifacts/platformdirs_1675735718929/work
 plotly==5.13.0
-prompt-toolkit @ file:///home/conda/feedstock_root/build_artifacts/prompt-toolkit_1670414775770/work
 protobuf==3.20.3
-psutil @ file:///Users/runner/miniforge3/conda-bld/psutil_1667886046623/work
-ptyprocess @ file:///home/conda/feedstock_root/build_artifacts/ptyprocess_1609419310487/work/dist/ptyprocess-0.7.0-py2.py3-none-any.whl
-pure-eval @ file:///home/conda/feedstock_root/build_artifacts/pure_eval_1642875951954/work
 pyasn1==0.4.8
 pyasn1-modules==0.2.8
-Pygments @ file:///home/conda/feedstock_root/build_artifacts/pygments_1672682006896/work
 pylibsrcml==1.0.0.post1
 pyparsing==3.0.9
-python-dateutil @ file:///home/conda/feedstock_root/build_artifacts/python-dateutil_1626286286081/work
 pytz==2022.7.1
-pyzmq @ file:///Users/runner/miniforge3/conda-bld/pyzmq_1673612713183/work
-requests==2.28.2
 requests-oauthlib==1.3.1
 rsa==4.9
 seaborn==0.12.2
 six==1.15.0
-stack-data @ file:///home/conda/feedstock_root/build_artifacts/stack_data_1669632077133/work
 tenacity==8.2.1
 tensorboard==2.11.2
 tensorboard-data-server==0.6.1
@@ -77,11 +45,7 @@ tensorboard-plugin-wit==1.8.1
 tensorflow==2.5.0
 tensorflow-estimator==2.5.0
 termcolor==1.1.0
-tornado @ file:///Users/runner/miniforge3/conda-bld/tornado_1666788680357/work
-traitlets @ file:///home/conda/feedstock_root/build_artifacts/traitlets_1675110562325/work
 typing-extensions==3.7.4.3
 urllib3==1.26.14
-wcwidth @ file:///home/conda/feedstock_root/build_artifacts/wcwidth_1673864653149/work
 Werkzeug==2.2.2
 wrapt==1.12.1
-zipp @ file:///home/conda/feedstock_root/build_artifacts/zipp_1675982654259/work

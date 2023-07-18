@@ -1,19 +1,20 @@
 # Statement-level:
 # Analysis of IoTvulCode tool generated output for feeding non-vul statements:
 
-import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
-import plotly.express as px
-import lizard
-import subprocess as sub
-from pylibsrcml import srcml
 import os
-import re
-import xml.etree.ElementTree as et
-import warnings
 import random
+import re
+import subprocess as sub
+import warnings
+import xml.etree.ElementTree as et
+
+import lizard
+import matplotlib.pyplot as plt
+import pandas as pd
+import plotly.express as px
+import seaborn as sns
 import yaml
+from pylibsrcml import srcml
 
 warnings.filterwarnings("ignore")
 
@@ -21,11 +22,21 @@ warnings.filterwarnings("ignore")
 class Utility():
     def __init__(self):
         self.config = {}
-        with open("ext_projects.yaml", "r") as stream:
+        # with open("ext_projects.yaml", "r") as stream:
+        #     try:
+        #         self.config = yaml.safe_load(stream)
+        #     except Exception as e:
+        #         print("Error loading configuration file: " + str(e))
+
+    def load_config(yaml_file):
+        """
+        load the yaml file and return a dictionary
+        """
+        with open(yaml_file, "r") as stream:
             try:
-                self.config = yaml.safe_load(stream)
-            except Exception as e:
-                print("Error loading configuration file: " + str(e))
+                return yaml.safe_load(stream)
+            except yaml.YAMLError as exc:
+                return exc
 
     def get_benign_context(self, row):
         """

@@ -172,7 +172,8 @@ def import_cves():
 
         # Check if the directory already has the json file or not ?
         if os.path.isfile(Path(DATA_PATH) / "json" / extract_target):
-            print(f"Reusing the {year} CVE json file that was downloaded earlier...")
+            print(
+                f"Reusing the {year} CVE json file that was downloaded earlier...")
             json_file = Path(DATA_PATH) / "json" / extract_target
         else:
             # url_to_open = urlopen(zip_file_url, timeout=10)
