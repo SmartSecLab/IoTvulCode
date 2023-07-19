@@ -20,17 +20,15 @@ warnings.filterwarnings("ignore")
 
 
 class Utility():
+    """
+    This class does several supporting utility functions
+    """
+
     def __init__(self):
         self.config = {}
-        # with open("ext_projects.yaml", "r") as stream:
-        #     try:
-        #         self.config = yaml.safe_load(stream)
-        #     except Exception as e:
-        #         print("Error loading configuration file: " + str(e))
 
-    def load_config(yaml_file):
-        """
-        load the yaml file and return a dictionary
+    def load_config(self, yaml_file):
+        """Load the yaml file and return a dictionary
         """
         with open(yaml_file, "r") as stream:
             try:
