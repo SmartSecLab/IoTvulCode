@@ -26,7 +26,7 @@ class Plotter:
     def __init__(self, config):
         self.config = config
 
-    def plot_metrics(history):
+    def plot_metrics(self, history):
         print(history.history.keys())
         plt.plot(history.history["acc"])
         # plt.plot(history.history['loss'])
@@ -36,7 +36,7 @@ class Plotter:
         plt.legend(["Accuracy"], loc="lower right")
         # plt.show()
 
-    def plot_history(history, fig_name=None):
+    def plot_history(self, history, fig_name=None):
         """
         plot ML performance metrics obtained from the training/testing history
         reference: https://github.com/SmartSecLab/ENViSEC/blob/main/src/utility.py
@@ -84,7 +84,7 @@ class Plotter:
         if fig_name:
             plt.savefig(fig_name + "_loss.pdf")
 
-    def plot_curves(fig_name, kfold, trained_model, X, y, cv=3, return_times=True):
+    def plot_curves(self, fig_name, kfold, trained_model, X, y, cv=3, return_times=True):
         """
         plot different curves of ML measures.
         reference: https://github.com/SmartSecLab/ENViSEC/blob/main/src/utility.py

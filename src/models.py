@@ -22,21 +22,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-
-from tensorflow.keras import backend as K
-from tensorflow.keras import regularizers
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
-from tensorflow.keras.layers import (ELU, LSTM, BatchNormalization, Bidirectional,
-                                     Convolution1D, Convolution2D, Embedding, Input,
-                                     MaxPooling1D, MaxPooling2D, SimpleRNN, concatenate)
-from tensorflow.keras.layers import Activation, Dense, Dropout, Flatten, Lambda
-from tensorflow.keras.models import Model, Sequential, load_model, model_from_json
-from tensorflow.keras.optimizers import SGD, Adam, RMSprop
-from tensorflow.keras.preprocessing import sequence
-
-
-# from keras_metrics import metrics as km
-
 from matplotlib import pyplot
 from nltk.tokenize.regexp import WhitespaceTokenizer
 from sklearn import model_selection
@@ -46,6 +31,22 @@ from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import KFold, RepeatedKFold, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
+from tensorflow.keras import backend as K
+from tensorflow.keras import regularizers
+from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint,
+                                        TensorBoard)
+from tensorflow.keras.layers import (ELU, LSTM, Activation, BatchNormalization,
+                                     Bidirectional, Convolution1D,
+                                     Convolution2D, Dense, Dropout, Embedding,
+                                     Flatten, Input, Lambda, MaxPooling1D,
+                                     MaxPooling2D, SimpleRNN, concatenate)
+from tensorflow.keras.models import (Model, Sequential, load_model,
+                                     model_from_json)
+from tensorflow.keras.optimizers import SGD, Adam, RMSprop
+from tensorflow.keras.preprocessing import sequence
+
+# from keras_metrics import metrics as km
+
 
 warnings.filterwarnings("ignore")
 
