@@ -12,6 +12,7 @@ Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smar
 
 import json
 import os
+import pickle
 import re
 import sys
 import warnings
@@ -26,11 +27,12 @@ import pandas as pd
 import tensorflow as tf
 import yaml
 from dvclive.keras import DVCLiveCallback
+from sklearn.metrics import classification_report
 
 # custom modules
-from src.preprocess import Preprocessor
 from src.models import ModelArchs
 from src.plot import Plotter
+from src.preprocess import Preprocessor
 from src.utility import Utility
 
 
@@ -193,7 +195,7 @@ class Classifier:
             plot.plot_history(history, fig_name)
             print(f"\nAccuracy of the model: {accuracy}\n")
 
-            # save tracked files
+            # save the tracked files
             if self.config["model"]["use_neptune"]:
                 nt_run["learning_curves"].track_files(fig_name + ".pdf")
                 nt_run["loss_curve"].track_files(fig_name + "_loss.pdf")
@@ -203,36 +205,73 @@ class Classifier:
             print(f"Trained with non-DNN model: {model_name}")
         return model
 
+    # def load_model(self, model_JSON, file_weights):
+    #     """Load model from disk"""
+    #     with open(model_JSON, "r") as f:
+    #         model_json = json.load(f)
+    #         model = model_from_json(model_json)
+
+    #     model.load_weights(file_weights)
+    #     return model
+
+    def load_tf_model(self, model_file):
+        """ 
+        Load model from disk
+        Args:
+            model_file (_type_): trained tensorflow model (h5)
+            file_weights (_type_): file weights of the trained model
+        """
+        print(f"\nLoading the trained model from: \n{model_file}")
+        model = tf.keras.models.load_model(model_file)
+        # model.load_weights(file_weights)
+        print('-'*20)
+        print(model.summary())
+        print("\nModel loaded successfully!\n")
+        print('-'*20)
+        return model
+
     def evaluate_model(self, model_file, X_eval, y_eval):
         """Evaluate the trained model
         """
         if self.config["model"]["name"] != "RF":
             if Path(model_file).is_file():
-                print("Loading the trained model from: ", model_file)
-                model = self.load_model(model_file)
-                print(f"Model loaded successfully! \nEvaluating the model...")
-                print("Model Summary: \n", model.summary())
+                model = self.load_tf_model(model_file)
 
+                # evaluate the model
+                # loss, acc = model.evaluate(X_eval, y_eval, verbose=0)
+
+                print("\nEvaluating the model...\n")
                 y_pred = model.predict(X_eval)
-                y_pred = np.argmax(y_pred, axis=1)
-                y_eval = np.argmax(y_eval, axis=1)
-                print("Classification Report: \n",
-                      classification_report(y_test, y_pred))
+                # print(f'y_pred: {y_pred}')
+                # print(f'y_eval: {y_eval}')
+                # print(f'\ny_pred.shape: {y_pred.shape}')
+                # print(f'y_eval.shape: {y_eval.shape}')
+
+                # # y_pred = np.argmax(y_pred, axis=1)
+                # # y_eval = np.argmax(y_eval, axis=1)
+
+                # print(f'\ny_pred: {y_pred}')
+                # print(f'y_eval: {y_eval}')
+                # print(f'\ny_pred.shape: {y_pred.shape}')
+                # print(f'y_eval.shape: {y_eval.shape}')
+
+                # cls_report = classification_report(y_eval, y_pred)
+                # print(f"Classification Report: \n{cls_report}")
+                print('loss: ', loss)
+                print('acc: ', acc)
             else:
-                print(f"Model file: {model_file} not found!")
+                print(f"\n\nModel file: {model_file} not found!")
                 print("Please train the model first!")
         else:
             train_model = pickle.load(open(model_file, "RF"))
-            result = self.train_model.score(X_eval, y_eval)
+            result = train_model.score(X_eval, y_eval)
             print("Result: ", result)
-
         print("\n" + "-" * 35 + "Testing Completed" + "-" * 35 + "\n")
 
     def parse_args(self):
         """Parse command line arguments."""
-        parser = ArgumentParser(
-            description="AI-enabled IoT Cybersecurity Approach for Vulnerability Detection..."
-        )
+        parser = ArgumentParser(description="AI-enabled IoT \
+            Cybersecurity Approach for Vulnerability Detection...")
         parser.add_argument("--model", type=str,
                             help="Name of the ML model to train/test.")
         parser.add_argument("--data", type=str,
@@ -267,4 +306,4 @@ if __name__ == "__main__":
     # TODO: Evaluation of the trained model
     if config["test"]:
         output_size = len(set(list(y_train)))
-        classfr.evaluate_model(config, model_file, X_test, y_test)
+        classfr.evaluate_model(model_file, X_test, y_test)

@@ -1,13 +1,14 @@
-import sqlite3
 import random
-import yaml
+import sqlite3
 from sqlite3 import connect
+
 import pandas as pd
+import yaml
 
 
 class Database:
-    def __init__(self):
-        self.conn = connect('IoTcode.db')
+    def __init__(self, db_file):
+        self.conn = connect(db_file)
         self.cursor = self.conn.cursor()
 
     def __enter__(self):

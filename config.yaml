@@ -2,7 +2,7 @@
 data_file: "data/contiki-master_Binary.csv"
 result_dir: result/
 apply_balancer: False # True if you want to apply the classes' balancer
-train: True
+train: False
 test: True
 debug: True # mode: turn debugging mode True for preprocessing on debug_rows samples.
 
@@ -28,7 +28,7 @@ model: # settings for training and testing experiments
     # If True, make sure you have correctly configured '.neptune_config.ini' file
 dnn:
   epochs: 50 # default iDetect 800
-  debug_epochs: 1 # incase just bubugging the code, running or not
+  debug_epochs: 3 # incase just bubugging the code, running or not
   batch: 128 # 64 iDetect
   input_length: 150
   input_dim: 150

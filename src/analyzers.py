@@ -27,7 +27,10 @@ from src.utility import Utility
 
 
 class Analyzers:
-    def __init__(self):
+    """This class applies static code analyzers via commands
+    """
+
+    def __init__(self, config):
         self.common_cols = ["file", "line", "column", "cwe", "note"]
         self.unique_cols = ["context", "defaultlevel", "level", "helpuri"]
         self.filter_cols = [
@@ -36,11 +39,15 @@ class Analyzers:
             "ruleid",
             "suggestion",
         ]
-        self.consider_cols = ['file', 'line', 'column', 'defaultlevel', 'level', 'category', 'name',
-                              'msg', 'note', 'cwe', 'context', 'helpuri', 'severity', 'tool', 'type']
+        self.consider_cols = ['file', 'line', 'column', 'defaultlevel',
+                              'level', 'category', 'name', 'msg', 'note',
+                              'cwe', 'context', 'helpuri', 'severity',
+                              'tool', 'type'
+                              ]
         self.pl_list = ["c", "c++", "cpp", "cxx", "cp", "h"]
+
         self.util = Utility()
-        self.config = self.util.config
+        self.config = config
 
     def guess_pl(self, file, zip_obj=None):
         """guess the programming language of the input file.
@@ -50,23 +57,28 @@ class Analyzers:
         TODO extract .zip file for further flaw finding
         TODO fix: Empty source code provided
         """
+        pl = 'unknown'
+
         if self.config['save']["apply_guesslang"]:
+            from guesslang import Guess
             guess = Guess()
             try:
-                if zip_obj != None:
+                if zip_obj is not None:
                     # extract a specific file from the zip container
-                    with zip_obj.open(file, "r") as f:
-                        lang = guess.language_name(f.read())
+                    with zip_obj.open(file, "r") as fp:
+                        lang = guess.language_name(fp.read())
                 else:
-                    with open(file, "r") as f:
-                        lang = guess.language_name(f.read())
-                return lang.lower()
-            except Exception as e:
-                print(f"Guesslang error: {e}")
-                return "unknown"
+                    with open(file, "r") as fp:
+                        lang = guess.language_name(fp.read())
+                pl = lang.lower()
+            except Exception as exc:
+                print(f"Guesslang error: {exc}")
+
         else:
             pl = Path(file).suffix.replace(".", "").lower()
-            return pl if pl in self.pl_list else "unknown"
+            pl = pl if pl in self.pl_list else "unknown"
+
+        return pl
 
 
 ############################## Applying CppCheck tool ##############################
@@ -81,9 +93,9 @@ class Analyzers:
 
         # avoid list for single valued items;
         # TODO check if it applies for all the projects
-        for key in dt_loc.keys():
-            if len(dt_loc[key]) == 1:
-                dt_loc[key] = dt_loc[key][0]
+        for index in dt_loc:
+            if len(dt_loc[index]) == 1:
+                dt_loc[index] = dt_loc[index][0]
         # if len(dt_loc) > 1:
         # print(flaw)
         return dt_loc
@@ -107,8 +119,8 @@ class Analyzers:
 
                 df = df.rename(columns={"file0": "file"}
                                ).reset_index(drop=True)
-            except Exception as e:
-                print(f"Parsing error with CppCheck:  {e}")
+            except Exception as exc:
+                print(f"Parsing error with CppCheck:  {exc}")
         return df
 
     def apply_cppcheck(self, fname, xmlfile="data/output.xml") -> pd.DataFrame:
@@ -142,30 +154,36 @@ class Analyzers:
             df = df.reset_index(drop=True)
         return df
 
-############################## Applying FlawFinder tool ##############################
+######################### Applying FlawFinder tool ####################
 
     def apply_flawfinder(self, fname) -> pd.DataFrame:
         """find flaws in the file using CppCheck tool"""
-        if os.path.isfile(fname):
-            cmd = "flawfinder --csv " + fname
-        elif os.path.isdir(fname):
-            cmd = "flawfinder --csv --inputs " + fname
-        else:
-            print("Please provide a valid project dir/file/link!")
+        cmd = ''
+        df = pd.DataFrame()
+        try:
+            if os.path.isfile(fname):
+                cmd = "flawfinder --csv " + fname
+            elif os.path.isdir(fname):
+                cmd = "flawfinder --csv --inputs " + fname
+            else:
+                print("Please provide a valid project dir/file/link!")
 
-        process = sub.Popen(
-            cmd,
-            shell=True,
-            stdout=sub.PIPE,
-        )
-        output = process.stdout.read().decode("utf-8")
-        df = pd.read_csv(StringIO(output))
+            process = sub.Popen(
+                cmd,
+                shell=True,
+                stdout=sub.PIPE,
+            )
+            output = process.stdout.read().decode("utf-8")
+            df = pd.read_csv(StringIO(output))
 
-        if len(df) > 0:
-            df["tool"] = "FlawFinder"
-        return df.reset_index(drop=True)
+            if len(df) > 0:
+                df["tool"] = "FlawFinder"
+            df = df.reset_index(drop=True)
+        except Exception as exc:
+            print(f'error parsing file using flawfinder: {fname}')
+        return df
 
-############################## Applying Rats tool ##############################
+######################## Applying Rats tool #########################
 
     @staticmethod
     def xml2df_rats(xml) -> pd.DataFrame:
@@ -202,8 +220,8 @@ class Analyzers:
         process = sub.Popen(cmd, shell=True, stdout=sub.PIPE)
         try:
             output = process.stdout.read().decode("utf-8")
-        except Exception as e:
-            print(f"Rats: {e}")
+        except Exception as exc:
+            print(f"Rats: {exc}")
 
         df = self.xml2df_rats(output)
 
@@ -217,12 +235,15 @@ class Analyzers:
 
 ############################## Applying infer tool ##############################
 
+
     def json2df(self, file) -> pd.DataFrame:
         df = pd.DataFrame()
         with open(file) as f:
             data = json.load(f)
         df = pd.DataFrame(data)
         return df
+
+    # TODO: implementation of infer tool
 
     def apply_infer(self, fname) -> pd.DataFrame:
         """find flaws in the file using infer tool"""
@@ -251,7 +272,6 @@ class Analyzers:
 
 ############################## prerequisites for merging the output of all tools ##############################
 
-
     @staticmethod
     def concat(*args):
         """merge two columns of the dataframe with numpy vectorize method"""
@@ -259,8 +279,8 @@ class Analyzers:
         try:
             strs = [str(arg) for arg in args if not pd.isnull(arg)]
             concat_str = ",".join(strs) if strs else np.nan
-        except Exception as e:
-            print("Value Error: ", e)
+        except Exception as exc:
+            print("Value Error: ", exc)
             print(f"Args: {args}")
             print(concat_str)
         return concat_str
@@ -300,6 +320,7 @@ class Analyzers:
 
 
 ############################## Merge the output of all tools ##############################
+
 
     def merge_tools_result(self, fname) -> pd.DataFrame:
         """merge dataframe generated by FlawFinder and CppCheck tools"""

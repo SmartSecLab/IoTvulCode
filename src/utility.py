@@ -33,8 +33,8 @@ class Utility():
         with open(yaml_file, "r") as stream:
             try:
                 return yaml.safe_load(stream)
-            except yaml.YAMLError as exc:
-                return exc
+            except yaml.YAMLError as err:
+                return err
 
     def get_benign_context(self, row):
         """
@@ -109,7 +109,7 @@ class Utility():
             subset=["cwe", code_col]).reset_index(drop=True)
         len_s1 = len(df)
         print(
-            f"Total {len_s0-len_s1} duplicate samples were dropped from {len_s0} samples.")
+            f"#[{len_s0-len_s1} out of {len_s0}] duplicate were dropped!")
 
         # Step 2: drop duplicates from ambiguous rows on the context column
         # (keeping only a first occurrence, i.e, vul/cwe sample)
@@ -119,7 +119,7 @@ class Utility():
             .reset_index(drop=True)
         )
         print(
-            f"Total {len_s1-len(df)} ambiquous samples were dropped from {len_s1} samples.")
+            f"#[{len_s1-len(df)} out of {len_s1}] ambiquous samples were dropped!")
         print("-" * 50 + "\n")
         return df
 
@@ -127,9 +127,9 @@ class Utility():
         print(
             f"\nShape of the {name}-level metrics of all the projects: {df.shape}")
         print(
-            f"#vulnerable: {len(df[df.cwe!='Benign'])}")
+            f" #vulnerable: {len(df[df.cwe!='Benign'])}")
         print(
-            f"#benign: {len(df[df.cwe=='Benign'])}\n")
+            f" #benign: {len(df[df.cwe=='Benign'])}\n")
 
     def save_binary(filename, dfs):
         """save a dataframe to a binary file"""

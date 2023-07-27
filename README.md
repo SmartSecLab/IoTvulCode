@@ -1,6 +1,6 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-# Vulnerability detection in IoT operating systems and applications analyzing open-source code:
+# Vulnerability detection in IoT software analyzing open-source code:
 
 In this study, we have presented an IoT vulnerability data extraction tool and machine learning methods to detect vulnerabilities in the C\C++ source code of IoT operating systems(OS) and applications.
 The source code of various IoT OSs and applications was used to create a binary and multi-class labeled dataset including both vulnerable and benign samples.

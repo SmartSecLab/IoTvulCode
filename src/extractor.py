@@ -6,42 +6,38 @@ Grepping functions from the vulnerability context of
 file, function and statement-level information
 """
 
-import ast
-import csv
-import itertools
 import os
 import subprocess as sub
 import sys
 import tempfile
 import time
 import xml.etree.ElementTree as et
-from io import BytesIO, StringIO
+from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
 
 import lizard
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import plotly.express as px
 import requests
 import seaborn as sns
 import yaml
-from guesslang import Guess
 from humanfriendly import format_timespan
 from pylibsrcml import srcml
 
+from src.analyzers import Analyzers
 # User defined modules
 from src.sqlite import Database
-from src.analyzers import Analyzers
 from src.utility import Utility
 
 
 class Extractor:
     def __init__(self):
-        self.sect = Analyzers()
-        self.db = Database()
         self.util = Utility()
+        self.config_file = "ext_projects.yaml"
+        self.config = self.util.load_config(self.config_file)
+
+        self.sect = Analyzers(self.config)
+        self.pl_list = self.sect.pl_list
 
         self.cols_filter = [
             "full_parameters",
@@ -51,10 +47,29 @@ class Extractor:
             "top_nesting_level",
             "defaultlevel",
         ]
-        self.conn = self.db.conn
         self.start_time = time.time()
 
+        db_file = self.config['save']['database']
+        db_exists = Path(db_file).exists()
+
+        # exit if override set to False
+        if self.config['save']['override'] is False and db_exists:
+            print(f"Provide another database filename or set override=True in the config file: \n \
+                    {self.config_file}!")
+            exit(1)
+
+        # check if the database file exists or override option is set to False
+        if db_exists:
+            print(f"The flaw/metric data file you want to create already exists: \n \
+                {db_file}")
+        else:
+            self.db = Database(db_file=db_file)
+            self.conn = self.db.conn
+
+
 # ================= Process CWE ==================================
+
+
     def extract_cwe(self, cwe) -> str:
         """ Extract CWE type information,
         In case of Rats tool's 'CWE-unknown' list, make it just a single item."""
@@ -75,26 +90,26 @@ class Extractor:
     def extract_functions(self, source_file, lines, cwes, context, tool=['cppcheck']):
         """split the given file into a list of function blocks and return their metrics into a dataframe.
         <guru> I think there is a problem in lizard detecting the correct full_parameters
-        either we have to concatenate two lines of full_parameters or ignore it and take it from long_name if needed.
-        drop['full_parameters', 'fan_in', 'fan_out', 'general_fan_out'] because lizard has not properly
-        implemented these parameters yet.
+        either we have to concatenate two lines of full_parameters or ignore it 
+        and take it from long_name if needed.
+        drop['full_parameters', 'fan_in', 'fan_out', 'general_fan_out'] because 
+        the lizard has not properly implemented these parameters yet.
         check if the vulnerability content/statement appears in the function block or not.
         type of the vul line should be int and then lies in the function block.
         # """
         df_file = pd.DataFrame()
 
         # TODO: review this code now
-        with open(source_file, "r", errors="surrogateescape") as fp:
+        with open(source_file, "r", encoding='utf-8', errors="surrogateescape") as fp:
 
             source_code = fp.read()
             liz_file = lizard.analyze_file.analyze_source_code(
                 source_file, source_code)
-
-            for ifun in range(len(liz_file.function_list)):
+            for i, fun_name in enumerate(liz_file.function_list):
                 vul_statements = []
                 cwe = []
 
-                fun = liz_file.function_list[ifun].__dict__
+                fun = liz_file.fun_name.__dict__
                 df_file_fun = pd.DataFrame.from_dict(fun)
 
                 start = int(fun["start_line"])
@@ -113,7 +128,6 @@ class Extractor:
                         if t.lower() == "cppcheck" or t.lower() == "rats":
                             vline = fp.readlines()[l]
                             fp.seek(0)
-
                         if vline != '' and cnt != cnt:
                             cnt = vline
 
@@ -139,7 +153,9 @@ class Extractor:
 
         # drop duplicates and keep a single row
         df_file = df_file.drop_duplicates(
-            subset=['file', 'long_name', 'start_line', 'end_line', 'cwe'], keep='last').reset_index(drop=True)
+            subset=['file', 'long_name', 'start_line', 'end_line', 'cwe'],
+            keep='last'
+        ).reset_index(drop=True)
 
         if set(self.cols_filter).issubset(set(list(df_file.columns))):
             df_file = df_file.drop(self.cols_filter, axis=1)
@@ -158,11 +174,11 @@ class Extractor:
         else:
             with open(file) as fc:
                 try:
-                    # use encoding otherwise, flawfinder shows encoding error for some files.
+                    # use encoding otherwise, flawfinder shows encoding error
                     file_content = fc.read().encode("utf-8")
-                except UnicodeDecodeError as e:
+                except UnicodeDecodeError as err:
                     file_content = fc.read().encode("latin-1")
-                    print(f"UnicodeDecodeError: {e} for file: {file}")
+                    print(f"UnicodeDecodeError: {err} for file: {file}")
 
         fp = tempfile.NamedTemporaryFile(suffix="_Flawfinder", prefix="File_")
 
@@ -192,8 +208,8 @@ class Extractor:
         try:
             response = requests.get(self.url)
             return True if response.status_code < 400 else False
-        except Exception as e:
-            print(f"Invalid URL! {e}")
+        except Exception as exc:
+            print(f"Invalid URL! {exc}")
             return False
 
     def retrieve_zip(self, url):
@@ -218,13 +234,14 @@ class Extractor:
         zipobj = None
         fc = 0
         self.url = url
-        print("extning for flaws (takes a while)....")
+        print("extracting for flaws (takes a while)....")
 
         if os.path.isdir(self.url):
             files = [str(f) for f in Path(self.url).rglob("*.*")]
             selected_files = [
                 x for x in files if self.sect.guess_pl(x) in self.sect.pl_list]
         else:
+            print('prj URL:', self.url)
             zipobj = self.retrieve_zip(self.url)
             if zipobj != None:
                 files = zipobj.namelist()
@@ -282,8 +299,8 @@ class Extractor:
                                            if_exists='append', index=False)
 
                 # TODO: handle the exception
-                except Exception as e:
-                    print(f"Error: {e} for file: {file}")
+                except Exception as exc:
+                    print(f"Error: {exc} for file: {file}")
 
                 # verbose on every 100 files
                 if fc % 100 == 0:
@@ -308,8 +325,7 @@ class Extractor:
         return True
 
 
-# ================= iterate extning on each project ==================================
-
+# ================= iterate on extracting each project ======================
 
     def iterate_projects(self, prj_dir_urls):
         """iterate on every project"""
@@ -323,14 +339,14 @@ class Extractor:
             stat = self.db.get_status(prj)
 
             if stat == 'Complete':
-                print(f"The project had been already extned!")
+                print(f"The project had been already extracted!")
 
             elif stat == 'Not Started' or stat == 'In Progress':
                 # if os.path.isfile(prj) == False or os.path.isdir(prj) == False:
 
                 # extract the project directory/URL
                 success = self.project2db(prj, stat)
-                if success == True:
+                if success is True:
                     # Change the project status to complete
                     self.db.change_status(self.url, 'Complete')
                 else:
@@ -382,23 +398,9 @@ class Extractor:
 
 
 if __name__ == "__main__":
-    # The list of the URL links of the project zip files.
-    config = yaml.safe_load(open("ext_projects.yaml"))
-
-    flaw_file = config["save"]["statement"]
-    metric_file = config["save"]["function"]
-    override = config["save"]["override"]
-
-    if override == False and (os.path.exists(flaw_file) or os.path.exists(metric_file)):
-        print(
-            f"The flaw/metric data file you want to create already \
-                    exists: {flaw_file}/{metric_file}\n provide another \
-                        filename or set override=True in the config file."
-        )
-        exit(0)
-
     ext = Extractor()
-    ext.iterate_projects(config["projects"])
+
+    ext.iterate_projects(ext.config["projects"])
 
     # Refine the data
     start_time = time.time()

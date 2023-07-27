@@ -12,10 +12,9 @@ Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smar
 
 import json
 import os
-import warnings
-from argparse import ArgumentParser
-from configparser import ConfigParser
+from string import printable
 
+import numpy as np
 import pandas as pd
 import yaml
 from sklearn import model_selection
@@ -49,7 +48,7 @@ class Preprocessor():
         print("-" * 50)
         print(df.head(3))
         print("-" * 50)
-        return df.reset_index(drop=True)
+        return df
 
     def tokenize_data(self, df, max_len):
         """Dataset tokenization"""
@@ -57,6 +56,8 @@ class Preprocessor():
             [printable.index(x) + 1 for x in code_snippet if x in printable]
             for code_snippet in df.code]
 
+        # Pad the sequences (left padded with zeros)
+        # to the max length of the code snippet
         X = pad_sequences(code_snippet_int_tokens, maxlen=max_len)
         target = np.array(df.isMalicious)
         print(f"Matrix dimensions of X: {X.shape},\
@@ -77,14 +78,14 @@ class Preprocessor():
               )
         return X_train, X_test, y_train, y_test
 
-    def save_model_idetect(self, model_JSON, file_weights):
+    def save_model_idetect(self, model_json, file_weights):
         """Saving model to disk"""
-        print(f"Saving model to disk:{model_JSON} and {file_weights}")
+        print(f"Saving model to disk:{model_json} and {file_weights}")
         # have h5py installed
-        if Path(model_JSON).is_file():
-            os.remove(model_JSON)
+        if Path(model_json).is_file():
+            os.remove(model_json)
         json_string = model.to_json()
-        with open(model_JSON, "w") as f:
+        with open(model_json, "w") as f:
             json.dump(json_string, f)
         if Path(file_weights).is_file():
             os.remove(file_weights)
@@ -100,12 +101,3 @@ class Preprocessor():
 
         print(f"The final trained model is saved at: {model_file}")
         print("\n" + "-" * 35 + "Training Completed" + "-" * 35 + "\n")
-
-    def load_model(self, model_JSON, file_weights):
-        """Load model from disk"""
-        with open(model_JSON, "r") as f:
-            model_json = json.load(f)
-            model = model_from_json(model_json)
-
-        model.load_weights(file_weights)
-        return model
