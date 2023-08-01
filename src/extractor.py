@@ -53,18 +53,19 @@ class Extractor:
         db_exists = Path(db_file).exists()
 
         # exit if override set to False
-        if self.config['save']['override'] is False and db_exists:
-            print(f"Provide another database filename or set override=True in the config file: \n \
-                    {self.config_file}!")
-            exit(1)
-
-        # check if the database file exists or override option is set to False
         if db_exists:
-            print(f"The flaw/metric data file you want to create already exists: \n \
-                {db_file}")
+            # check if the database file exists or override option is set to False
+            print(
+                f"The flaw/metric data you want to create already exists: \n{db_file}")
+            if self.config['save']['override'] is False:
+                print(f"Provide another database name or set override option to True in the config file: \n \
+                        {self.config_file}!")
+                exit(1)
+            else:
+                print(f"Overriding the existing database: \n{db_file}")
+                self.db = Database(db_file=db_file)
         else:
             self.db = Database(db_file=db_file)
-            self.conn = self.db.conn
 
 
 # ================= Process CWE ==================================
@@ -256,7 +257,7 @@ class Extractor:
         # TODO: incremental fetching of the information.
         if self.db.table_exists('statement'):
             extned_files = set(
-                list(pd.read_sql('SELECT file from statement', self.conn)['file']))
+                list(pd.read_sql('SELECT file from statement', self.db.conn)['file']))
             selected_files = list(set(selected_files) - extned_files)
 
             print(f'#files already extned: {len(extned_files)}')
@@ -284,7 +285,7 @@ class Extractor:
 
                         df_flaw_file['project'] = self.url
 
-                        df_flaw_file.to_sql('statement', con=self.conn,
+                        df_flaw_file.to_sql('statement', con=self.db.conn,
                                             if_exists='append', index=False)
 
                         # Change status to 'In Progress' once if it is 'Not Started'
@@ -295,7 +296,7 @@ class Extractor:
                     if len(df_fun_file) > 0:
                         df_fun_file = df_fun_file.astype(str)
                         df_fun_file['project'] = self.url
-                        df_fun_file.to_sql('function', con=self.conn,
+                        df_fun_file.to_sql('function', con=self.db.conn,
                                            if_exists='append', index=False)
 
                 # TODO: handle the exception
@@ -367,7 +368,7 @@ class Extractor:
         print("=" * 50 + "\n")
 
         self.db.query_project_table()
-        self.conn.commit()
+        self.db.conn.commit()
         self.db.cursor.close()
 
 
@@ -389,7 +390,7 @@ class Extractor:
         print("="*50)
         print("\n" + "-"*50)
         df.to_sql(table_name,
-                  con=self.conn,
+                  con=self.db.conn,
                   if_exists='replace',
                   index=False)
         print(f"Table: [{table_name}] is updated!")
