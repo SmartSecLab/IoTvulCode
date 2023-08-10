@@ -6,6 +6,7 @@ Grepping functions from the vulnerability context of
 file, function and statement-level information
 """
 
+import itertools
 import os
 import subprocess as sub
 import sys
@@ -19,7 +20,6 @@ from zipfile import ZipFile
 import lizard
 import pandas as pd
 import requests
-import seaborn as sns
 import yaml
 from humanfriendly import format_timespan
 from pylibsrcml import srcml
@@ -70,7 +70,6 @@ class Extractor:
 
 # ================= Process CWE ==================================
 
-
     def extract_cwe(self, cwe) -> str:
         """ Extract CWE type information,
         In case of Rats tool's 'CWE-unknown' list, make it just a single item."""
@@ -87,6 +86,60 @@ class Extractor:
             cwe = 'CWE-unknown'
         return str(cwe)
 
+
+# ================= extract each function =======================
+
+    def extract_each_function(self, liz_file, fp, fun_name, tuples):
+        """get the context of the function
+        """
+        vul_statements = []
+        cwe = []
+
+        # get the function block
+        fun = liz_file.fun_name.__dict__
+        df_fun = pd.DataFrame.from_dict(fun)
+
+        start = int(fun["start_line"])
+        end = int(fun["end_line"])
+        # moves the header to the initial point of the file
+        fp.seek(0)
+
+        fun_block = [
+            line for line in itertools.islice(fp, start, end)]
+        fp.seek(0)
+
+        # check if any of the lines of the file belong to any functions
+        for index, (l, c, cnt, t) in enumerate(tuples):
+
+            # checks vulnerability condition
+            if (isinstance(l, int)) and (start <= l < end):
+                vline = ''
+                if t.lower() == "cppcheck" or t.lower() == "rats":
+                    vline = fp.readlines()[l]
+                    fp.seek(0)
+                if vline != '' and cnt != cnt:
+                    cnt = vline
+
+                vul_statements.append((cnt, c))
+                cwe.append(c)
+
+        if len(cwe) == 0:
+            cwe.append('Benign')
+
+        # rename filename to file to make it consistent with statement
+        df_fun = df_fun.rename(
+            columns={"filename": "file"})
+
+        df_fun['code'] = fun["long_name"] + "".join(fun_block)
+        df_fun["fun_name"] = fun["name"]
+        df_fun["content"] = (
+            str(vul_statements) if len(
+                vul_statements) > 0 else "")
+        df_fun["isVul"] = 1 if cwe else 0
+        df_fun["cwe"] = self.extract_cwe(cwe)
+        df_fun["project"] = self.url
+        return df_fun
+
 # ================= Extract Functions ==================================
     def extract_functions(self, source_file, lines, cwes, context, tool=['cppcheck']):
         """split the given file into a list of function blocks and return their metrics into a dataframe.
@@ -99,6 +152,7 @@ class Extractor:
         type of the vul line should be int and then lies in the function block.
         # """
         df_file = pd.DataFrame()
+        tuples = zip(lines, cwes, context, tool)
 
         # TODO: review this code now
         with open(source_file, "r", encoding='utf-8', errors="surrogateescape") as fp:
@@ -106,63 +160,30 @@ class Extractor:
             source_code = fp.read()
             liz_file = lizard.analyze_file.analyze_source_code(
                 source_file, source_code)
-            for i, fun_name in enumerate(liz_file.function_list):
-                vul_statements = []
-                cwe = []
 
-                fun = liz_file.fun_name.__dict__
-                df_file_fun = pd.DataFrame.from_dict(fun)
+            # check liz_file does not have fun_name attribute
+            if hasattr(liz_file, 'fun_name'):
 
-                start = int(fun["start_line"])
-                end = int(fun["end_line"])
-                fp.seek(0)  # moves the header to the initial point of the file
+                for i, fun_name in enumerate(liz_file.function_list):
+                    df_fun = self.extract_each_function(
+                        liz_file, fp, fun_name, tuples)
+                    df_file = pd.concat([df_file, df_fun])
 
-                fun_block = [line for line in itertools.islice(fp, start, end)]
-                fp.seek(0)
+        if len(df_file) > 0:
+            # drop duplicates and keep a single row
+            df_file = df_file.drop_duplicates(
+                subset=['file', 'long_name', 'start_line', 'end_line', 'cwe'],
+                keep='last'
+            ).reset_index(drop=True)
 
-                # check if any of the lines of the file belong to any functions
-                for index, (l, c, cnt, t) in enumerate(zip(lines, cwes, context, tool)):
-
-                    # checks vulnerability condition
-                    if (isinstance(l, int)) and (start <= l < end):
-                        vline = ''
-                        if t.lower() == "cppcheck" or t.lower() == "rats":
-                            vline = fp.readlines()[l]
-                            fp.seek(0)
-                        if vline != '' and cnt != cnt:
-                            cnt = vline
-
-                        vul_statements.append((cnt, c))
-                        cwe.append(c)
-
-                if len(cwe) == 0:
-                    cwe.append('Benign')
-
-                # rename filename to file to make it consistent with the statement table
-                df_file_fun = df_file_fun.rename(columns={"filename": "file"})
-
-                df_file_fun['code'] = fun["long_name"] + "".join(fun_block)
-                df_file_fun["fun_name"] = fun["name"]
-                df_file_fun["content"] = (
-                    str(vul_statements) if len(vul_statements) > 0 else ""
-                )
-                df_file_fun["isVul"] = 1 if cwe else 0
-                df_file_fun["cwe"] = self.extract_cwe(cwe)
-                df_file_fun["project"] = self.url
-
-                df_file = pd.concat([df_file, df_file_fun])
-
-        # drop duplicates and keep a single row
-        df_file = df_file.drop_duplicates(
-            subset=['file', 'long_name', 'start_line', 'end_line', 'cwe'],
-            keep='last'
-        ).reset_index(drop=True)
-
-        if set(self.cols_filter).issubset(set(list(df_file.columns))):
-            df_file = df_file.drop(self.cols_filter, axis=1)
+            if set(self.cols_filter).issubset(set(list(df_file.columns))):
+                df_file = df_file.drop(self.cols_filter, axis=1)
+        else:
+            print(f'No function found in the file: {source_file}')
         return df_file
 
 # ================= Compose Flaws ==================================
+
     def compose_file_flaws(self, file, zip_obj=None):
         """convert zipped file stream - tempfile to pandas dataframe."""
         file_content = "".encode("utf-8")
@@ -170,15 +191,15 @@ class Extractor:
         df_fun = pd.DataFrame()
 
         if zip_obj:
-            with zip_obj.open(file) as fc:
-                file_content = fc.read()
+            with zip_obj.open(file) as fp:
+                file_content = fp.read()
         else:
-            with open(file) as fc:
+            with open(file) as fp:
                 try:
-                    # use encoding otherwise, flawfinder shows encoding error
-                    file_content = fc.read().encode("utf-8")
+                    # use encoding arg otherwise, FlawFinder shows an encoding error
+                    file_content = fp.read().encode("utf-8")
                 except UnicodeDecodeError as err:
-                    file_content = fc.read().encode("latin-1")
+                    file_content = fp.read().encode("latin-1")
                     print(f"UnicodeDecodeError: {err} for file: {file}")
 
         fp = tempfile.NamedTemporaryFile(suffix="_Flawfinder", prefix="File_")
@@ -328,6 +349,7 @@ class Extractor:
 
 # ================= iterate on extracting each project ======================
 
+
     def iterate_projects(self, prj_dir_urls):
         """iterate on every project"""
         df_flaw = pd.DataFrame()
@@ -374,27 +396,34 @@ class Extractor:
 
 # ================= Refine Data ==================================
 
+
     def refine_data(self, table_name):
         """refine the data, and filter out duplicates 
         after the extraction of all the raw data"""
-        df = pd.read_sql(f"SELECT * FROM {table_name}", con=self.db.conn)
-        print("\n\n" + "="*15 + f" Refining Data: {table_name} " + "="*20)
-        print('Before filtering:')
-        self.util.show_info_pd(df, table_name)
+        df = pd.DataFrame()
 
-        # filter the results
-        df = self.util.filter_results(df)
+        if self.db.table_exists(table_name):
+            df = pd.read_sql(f"SELECT * FROM {table_name}", con=self.db.conn)
+            print("\n\n" + "="*15 +
+                  f" Refining Data: [{table_name}] " + "="*15)
+            print('Before filtering:')
+            self.util.show_info_pd(df, table_name)
 
-        print('After filtering:')
-        self.util.show_info_pd(df, table_name)
-        print("="*50)
-        print("\n" + "-"*50)
-        df.to_sql(table_name,
-                  con=self.db.conn,
-                  if_exists='replace',
-                  index=False)
-        print(f"Table: [{table_name}] is updated!")
-        print("-"*50 + "\n")
+            # filter the results
+            df = self.util.filter_results(df)
+
+            print('After filtering:')
+            self.util.show_info_pd(df, table_name)
+            print("="*50)
+            print("\n" + "-"*50)
+            df.to_sql(table_name,
+                      con=self.db.conn,
+                      if_exists='replace',
+                      index=False)
+            print(f"Table: [{table_name}] is updated!")
+            print("-"*50 + "\n")
+        else:
+            print(f"Table: [{table_name}] does not exist!")
         return df
 
 

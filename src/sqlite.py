@@ -79,20 +79,23 @@ class Database:
 
     def show_shape(self, table_name, project):
         """ display the table shape """
-        if project == 'all':
-            nrows = pd.read_sql(
-                "SELECT COUNT(*) as len from '" + table_name + "'",
-                con=self.conn)
-        else:
-            nrows = pd.read_sql("SELECT COUNT(*) as len from '" +
-                                table_name + "' WHERE project='"
-                                + project + "'",
-                                con=self.conn)
+        if self.table_exists(table_name):
+            if project == 'all':
+                nrows = pd.read_sql(
+                    "SELECT COUNT(*) as len from '" + table_name + "'",
+                    con=self.conn)
+            else:
+                nrows = pd.read_sql("SELECT COUNT(*) as len from '" +
+                                    table_name + "' WHERE project='"
+                                    + project + "'",
+                                    con=self.conn)
 
-        ncols = pd.read_sql("SELECT COUNT(*) as len from pragma_table_info('" + table_name + "')",
-                            con=self.conn)
-        print(
-            f"Shape of the table: {table_name}(r,c) -> ({nrows['len'][0]}, {ncols['len'][0]})")
+            ncols = pd.read_sql("SELECT COUNT(*) as len from pragma_table_info('" + table_name + "')",
+                                con=self.conn)
+            print(
+                f"Shape of the table: {table_name}(r,c) -> ({nrows['len'][0]}, {ncols['len'][0]})")
+        else:
+            print(f"Table {table_name} not found in the database!")
 
     def change_status(self, project, status):
         """ changes the status of the project """
@@ -111,48 +114,57 @@ class Database:
     def get_status(self, project):
         """ returns the status of the project """
         status = 'Unknown'
-        try:
-            query = "SELECT status FROM project where project='" + project + "'"
-            # print(f"Query: {query}")
-            self.cursor.execute(query)
-            result = self.cursor.fetchone()
+        if self.table_exists('project'):
+            try:
+                query = "SELECT status FROM project where project='" + project + "'"
+                # print(f"Query: {query}")
+                self.cursor.execute(query)
+                result = self.cursor.fetchone()
 
-            if result is None:
-                print(f"Project {project} not found in the database!\n")
-            else:
-                status = result[0]
-                print('-'*50)
-                print(f"Project: {project} [{status}]")
-                print('-'*50)
-        except sqlite3.Error as error:
-            print(f"Failed to update SQLite table, {error}")
+                if result is None:
+                    print(f"Project {project} not found in the database!\n")
+                else:
+                    status = result[0]
+                    print('-'*50)
+                    print(f"Project: {project} [{status}]")
+                    print('-'*50)
+            except sqlite3.Error as error:
+                print(f"Failed to update SQLite table, {error}")
+        else:
+            print(f"Table project not found in the database!\n")
         return status
 
     def show_table_info(self, table):
         """ display the table info """
-        try:
-            query = "SELECT * FROM " + table
-            self.cursor.execute(query)
-            result = self.cursor.fetchall()
-            print(f"Table: {table} \n{result}")
-        except sqlite3.Error as error:
-            print(f"Failed to update SQLite table, {error}")
+        if self.table_exists(table):
+            try:
+                query = "SELECT * FROM " + table
+                self.cursor.execute(query)
+                result = self.cursor.fetchall()
+                print(f"Table: {table} \n{result}")
+            except sqlite3.Error as error:
+                print(f"Failed to update SQLite table, {error}")
+        else:
+            print(f"Table {table} not found in the database!\n")
 
     def show_cwe_benign(self, table):
         """ display the count of benign and vulnerable samples 
         in the table """
-        try:
-            benigns = pd.read_sql("SELECT COUNT(*) as len from '" +
-                                  table + "' WHERE cwe='Benign'",
-                                  con=self.conn)['len'][0]
-            non_benigns = pd.read_sql("SELECT COUNT(*) as len from '" +
-                                      table + "' WHERE cwe!='Benign'",
+        if self.table_exists(table):
+            try:
+                benigns = pd.read_sql("SELECT COUNT(*) as len from '" +
+                                      table + "' WHERE cwe='Benign'",
                                       con=self.conn)['len'][0]
-            print(f"[{table}] #Benign: {benigns}, #Vulnerable: {non_benigns}\n")
-            return benigns, non_benigns
+                non_benigns = pd.read_sql("SELECT COUNT(*) as len from '" +
+                                          table + "' WHERE cwe!='Benign'",
+                                          con=self.conn)['len'][0]
+                print(f"[{table}] #Benign: {benigns}, #Vulnerable: {non_benigns}\n")
+                return benigns, non_benigns
 
-        except sqlite3.Error as error:
-            print(f"Failed to update SQLite table, {error}")
+            except sqlite3.Error as error:
+                print(f"Failed to update SQLite table, {error}")
+        else:
+            print(f"Table {table} not found in the database!\n")
 
 
 if __name__ == "__main__":
