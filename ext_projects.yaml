@@ -7,19 +7,23 @@ projects: [
     # "https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download",
     # "https://github.com/contiki-os/contiki/archive/refs/heads/master.zip",
     # "https://github.com/raspberrypi/linux/archive/refs/heads/rpi-6.1.y.zip",
-    "https://github.com/raspberrypi/firmware/archive/refs/heads/master.zip",
+    # "https://github.com/raspberrypi/firmware/archive/refs/heads/master.zip",
     # "https://github.com/SmartSecLab/ENViSEC/archive/refs/heads/main.zip",
     # "/Users/guru/research/contiki-master",
-    # "/Users/guru/research/contiki-master/apps/webbrowser/",
+    "/Users/guru/research/contiki-master/apps/webbrowser/",
     # data/projects/contiki-2.4/cpu/cc2430/dev,
+    # /Users/guru/research/projects/gnucobol-3.2,
+    # /Users/guru/research/projects/gnucobol-3.2/libcob/mlio.c,
+    /Users/guru/research/projects/gnucobol-3.2/lib/,
   ]
 
 save:
   database: "data/IoT.db"
-  override: False # override the existing files
+  override: True
+  # override the existing files
   threshold_lines: 5
   benign_ratio: 0.25
-  seed: 0
+  seed: 41
   drop_dup: True
-  apply_guesslang: False # do you want to use guess lang to classify files or use extension?
-
+  apply_guesslang: False
+  # do you want to use guess lang to classify files or use extension?

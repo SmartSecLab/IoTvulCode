@@ -4,12 +4,15 @@ from sqlite3 import connect
 
 import pandas as pd
 import yaml
+from tabulate import tabulate
+from src.utility import Utility
 
 
 class Database:
     def __init__(self, db_file):
         self.conn = connect(db_file)
         self.cursor = self.conn.cursor()
+        self.util = Utility()
 
     def __enter__(self):
         return self.cursor
@@ -18,17 +21,16 @@ class Database:
         self.conn.commit()
         self.cursor.close()
 
-    def table_exists(self, table_name):
+    def table_exists(self, table):
         """ checks if table exists in database """
-        x = pd.read_sql(
+        df = pd.read_sql(
             "SELECT name FROM sqlite_master WHERE type='table' \
-                AND name='" + table_name + "'", con=self.conn)
-        if len(x) <= 0:
-            print("function table not found in already scanned record!\
-                     \nScanning from the beginning...")
+                AND name='" + table + "'", con=self.conn)
+        if len(df) <= 0:
+            print(f"Table [{table}] not found in the record!\n")
             return False
         else:
-            print(f'\nContinue ongoing extraction process...')
+            # print(f"Table [{table}] found in the record!\n")
             return True
 
     def insert_project(self, project):
@@ -43,14 +45,35 @@ class Database:
         except sqlite3.Error as error:
             print("Failed to update sqlite table, ", error)
 
-    def query_project_table(self):
-        """ creates the project table """
+    def display_table(self, table='project'):
+        """ display the status of the projects """
+        df = pd.read_sql("SELECT * from " + table, self.conn)
+        print("-"*50)
+        print("\n\n" + "="*20 + "Projects Status:" + "="*20)
+        print(tabulate(df, headers='keys', tablefmt='fancy_outline'))
+        print('\n')
+
+    def add_todo_projects_meta(self, projects):
+        """check whether there's any new project added and add them into DB"""
+        db_projects = list(pd.read_sql(
+            'SELECT project from project', self.conn)['project'])
+
+        todo_projects = list(set(projects) - set(db_projects))
+
+        if len(todo_projects) > 0:
+            for prj in todo_projects:
+                self.insert_project(prj)
+        else:
+            print("All projects are already in the database!")
+
+    def save_project_meta(self):
+        """ creates a table for the projects to track their status """
         df = pd.DataFrame()
         try:
             config = yaml.safe_load(open("ext_projects.yaml"))
             projects = config["projects"]
 
-            if self.table_exists('project') == False:
+            if self.table_exists('project') is False:
                 df = pd.DataFrame(data={
                     'project': projects,
                     'status': 'Not Started'
@@ -59,43 +82,41 @@ class Database:
                 df.insert(0, 'project_id', pid)
                 df.to_sql('project', con=self.conn,
                           if_exists='replace', index=False)
-                print("Successfully created the project table!")
+                print("Project metadata is saved!")
             else:
-                db_projects = list(pd.read_sql(
-                    'SELECT project from project', self.conn)['project'])
-                print("Project table already exists!")
+                print("Project meta table already exists!")
+                self.add_todo_projects_meta(projects)
 
-                for prj in projects:
-                    if prj not in db_projects:
-                        self.insert_project(prj)
+                # get projects from the project table
+                df = pd.read_sql('SELECT * from project', self.conn)
 
-            df = pd.read_sql('SELECT * from project', self.conn)
-            print("-"*30)
-            print(f"\nProjects Status: \n{df}")
-            print(f"-"*30)
+            self.display_table(table='project')
+
         except sqlite3.Error as error:
             print("Failed to create sqlite table, ", error)
         return df
 
-    def show_shape(self, table_name, project):
+    def show_shape(self, table, project):
         """ display the table shape """
-        if self.table_exists(table_name):
+        if self.table_exists(table):
             if project == 'all':
                 nrows = pd.read_sql(
-                    "SELECT COUNT(*) as len from '" + table_name + "'",
+                    "SELECT COUNT(*) as len from '" + table + "'",
                     con=self.conn)
             else:
                 nrows = pd.read_sql("SELECT COUNT(*) as len from '" +
-                                    table_name + "' WHERE project='"
+                                    table + "' WHERE project='"
                                     + project + "'",
-                                    con=self.conn)
+                                    con=self.conn
+                                    )
 
-            ncols = pd.read_sql("SELECT COUNT(*) as len from pragma_table_info('" + table_name + "')",
+            ncols = pd.read_sql("SELECT COUNT(*) as len from pragma_table_info('" + table + "')",
                                 con=self.conn)
             print(
-                f"Shape of the table: {table_name}(r,c) -> ({nrows['len'][0]}, {ncols['len'][0]})")
+                f"Shape of the table: {table}(r,c) -> ({nrows['len'][0]}, {ncols['len'][0]})")
         else:
-            print(f"Table {table_name} not found in the database!")
+            # print(f"Table [{table}] not found in the database!")
+            pass
 
     def change_status(self, project, status):
         """ changes the status of the project """
@@ -103,9 +124,8 @@ class Database:
             query = "UPDATE project SET status ='" + \
                 status + "' WHERE project='" + project + "'"
             self.cursor.execute(query)
-            print(f"\nProject: {project} status changed to [{status}]!")
             print('-'*50)
-            print(f"Project: {project} [{status}]\n")
+            print(f"Project status: {project} [{status}]\n")
             print('-'*50)
 
         except sqlite3.Error as error:
@@ -122,16 +142,14 @@ class Database:
                 result = self.cursor.fetchone()
 
                 if result is None:
-                    print(f"Project {project} not found in the database!\n")
+                    print(f"Project [{project}] not found in the database!\n")
                 else:
                     status = result[0]
-                    print('-'*50)
-                    print(f"Project: {project} [{status}]")
-                    print('-'*50)
+                    # print('-'*50)
+                    # print(f"Project: {project} [{status}]")
+                    # print('-'*50)
             except sqlite3.Error as error:
                 print(f"Failed to update SQLite table, {error}")
-        else:
-            print(f"Table project not found in the database!\n")
         return status
 
     def show_table_info(self, table):
@@ -141,11 +159,9 @@ class Database:
                 query = "SELECT * FROM " + table
                 self.cursor.execute(query)
                 result = self.cursor.fetchall()
-                print(f"Table: {table} \n{result}")
+                print(f"Table: [{table}] \n{result}")
             except sqlite3.Error as error:
                 print(f"Failed to update SQLite table, {error}")
-        else:
-            print(f"Table {table} not found in the database!\n")
 
     def show_cwe_benign(self, table):
         """ display the count of benign and vulnerable samples 
@@ -163,12 +179,26 @@ class Database:
 
             except sqlite3.Error as error:
                 print(f"Failed to update SQLite table, {error}")
+
+    def check_progress(self, project):
+        """ check the progress of the project """
+        print("\n" + "-" * 10 + f" Summary of: [{project}] " + "-" * 10)
+        if self.table_exists('statement'):
+            self.show_shape(table='statement', project=project)
+            self.show_cwe_benign(table='statement')
+            print("-" * 50 + "\n")
         else:
-            print(f"Table {table} not found in the database!\n")
+            print("Scanning...\n")
+
+        if self.table_exists('function'):
+            self.show_shape(table='function', project=project)
+            self.show_cwe_benign(table='function')
+            print("-" * 50 + "\n")
 
 
 if __name__ == "__main__":
-    create_project_table()
-    show_shape('project')
-    get_status('contiki-master')
-    table_exists('function')
+    db = Database('data/IoT.db')
+    db.create_project_table()
+    db.show_shape('project')
+    db.get_status('contiki-master')
+    db.table_exists('function')

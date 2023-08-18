@@ -5,8 +5,11 @@ import os
 import random
 import re
 import subprocess as sub
+import time
 import warnings
 import xml.etree.ElementTree as et
+from pathlib import Path
+from humanfriendly import format_timespan
 
 import lizard
 import matplotlib.pyplot as plt
@@ -24,37 +27,65 @@ class Utility():
     This class does several supporting utility functions
     """
 
-    def __init__(self):
-        self.config = {}
+    # def __init__(self):
+    #     # self.config = {}
+    #     pass
 
     def load_config(self, yaml_file):
         """Load the yaml file and return a dictionary
         """
+        assert Path(yaml_file).is_file(), \
+            f'The configuration file does not exist: {yaml_file}!'
         with open(yaml_file, "r") as stream:
             try:
                 return yaml.safe_load(stream)
             except yaml.YAMLError as err:
                 return err
 
-    def get_benign_context(self, row):
+    def check_internet(url):
+        """check if the internet is working or not."""
+        try:
+            response = requests.get(url)
+            return True if response.status_code < 400 else False
+        except Exception as exc:
+            print(f"Invalid URL! {exc}")
+            return False
+
+    def retrieve_zip(self, url):
+        """Fetching list of C/C++ files from zip file of the project url."""
+        if self.check_internet(url):
+            r = requests.get(url)
+            # BytesIO keeps the file in memory
+            return ZipFile(BytesIO(r.content))
+        else:
+            print("Internet is not working or the URL is Invalid!")
+            return None
+
+    def show_time_elapsed(self, start_time):
+        """verbose time elapsed so far"""
+        time_elapsed = time.time() - start_time
+        print(f"Time elapsed: {format_timespan(time_elapsed)}")
+        print("Continue gathering....\n")
+
+    def get_benign_context(self, config, row):
         """
         filter all lines if it is less than min threshold
         randomly shuffled lines
         """
-        threshold = self.config["save"]["threshold_lines"]
-        benign_ratio = self.config["save"]["benign_ratio"]
-        seed = self.config["save"]["seed"]
-
+        threshold = int(config["save"]["threshold_lines"])
+        benign_ratio = config["save"]["benign_ratio"]
+        seed = config["save"]["seed"]
         df = pd.DataFrame()
 
-        # threshold 7 to filter short functions
+        # threshold [7] to filter short functions
         lines = [x for x in enumerate(
             row["code"].splitlines()) if len(x[1]) > threshold]
 
         # randomly shuffle lines and takes 1/4 of the total number of lines.
         random.seed(seed)
         lines = random.sample(
-            population=lines, k=int(len(lines) * benign_ratio))
+            population=lines,
+            k=int(len(lines) * benign_ratio))
 
         # TODO: remove the ambiguous vul line from the 'benign' lines if present
         # vul_line = df.line[i]
@@ -70,34 +101,33 @@ class Utility():
         df["tool"] = "sampling"
         df["file"] = row["file"]
 
-        line_col = df["line"].astype(int) + int(row["start_line"])
-        max_line = max(list(line_col)) if list(line_col) else 0
-        end_line = int(row["end_line"])
+        # # TODO: add line number to the dataframe
+        # line_col = df["line"].astype(int) + int(row["start_line"])
+        # max_line = max(list(line_col)) if list(line_col) else 0
+        # end_line = int(row["end_line"])
 
-        # print(f"max of lines: {max_line} and end_line: {end_line}")
-        assert max_line <= end_line, "Line number shouldn't exceed function length!"
-        df["line"] = line_col
+        # # print(f"max of lines: {max_line} and end_line: {end_line}")
+        # assert max_line <= end_line, "Line number shouldn't exceed function length!"
+        # df["line"] = line_col
+        df['line'] = 'unknown'
         return df
 
-    def gen_benign(self, dfm):
+    def gen_benign(self, config, dfm):
         """create benign samples to the dataframe"""
-        # print("-" * 50)
-        # print("Generating benign samples (wait)...")
         df_fun = pd.DataFrame()
 
         for i in range(len(dfm)):
-            df_get = self.get_benign_context(dict(dfm.iloc[i]))
-            df_fun = df_fun.append(df_get).reset_index(drop=True)
-
-        # print("#Benign samples generated: ", len(df_fun))
-        # print("-" * 50)
-        return df_fun
+            df_get = self.get_benign_context(config, dict(dfm.iloc[i]))
+            df_fun = pd.concat(
+                [df_fun, df_get],
+                ignore_index=True)
+        return df_fun.reset_index(drop=True)
 
     def filter_results(self, df):
         """apply several filters to the dataframe"""
         print("\n" + "-" * 50)
         code_col = "code"
-
+        # for statement table preprocessing
         if 'context' in list(df.columns):
             code_col = 'context'
             df[code_col] = df[code_col].apply(
@@ -125,7 +155,7 @@ class Utility():
 
     def show_info_pd(self, df, name):
         print(
-            f"\nShape of the {name}-level metrics of all the projects: {df.shape}")
+            f"\nShape of the [{name}] data of all the projects: {df.shape}")
         print(
             f" #vulnerable: {len(df[df.cwe!='Benign'])}")
         print(
@@ -141,19 +171,12 @@ class Utility():
 
 
 if __name__ == "__main__":
-
     dataset = 'raspberryZip'
-
-    # stat = f"data/{dataset}_statement.csv"
-    # fun = f"data/{dataset}_function.csv"
-    # binary_file = f"data/{dataset}_binary.csv"
-
     config = yaml.safe_load(open("ext_projects.yaml"))
 
     stat = config["save"]["statement"]
     fun = config["save"]["function"]
     binary_file = config["save"]["statement"].rsplit('.')[0] + '_Binary.csv'
-
     override = config["save"]["override"]
 
     if override == False:

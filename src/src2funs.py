@@ -1,19 +1,14 @@
-import pandas as pd
-import subprocess
-from lxml import etree
-from io import StringIO
-import sys
+import ctypes
 import difflib
 import os
-import ctypes
 import stat
+import subprocess
+import sys
+from io import StringIO
+
+import pandas as pd
+from lxml import etree
 from pylibsrcml import srcml
-
-# source= '../data/projects/contiki-2.4/apps/ftp'
-# xml = "myprj.xml"
-
-# # Translate from a source-code file to a srcML file
-# srcml.srcml(source, xml)
 
 
 class Src2Funs:
@@ -27,12 +22,6 @@ class Src2Funs:
         # srcml --xpath="//src:function" '../data/projects/contiki-2.4/apps/ftp/ftpc.c' | srcml --xpath="string(//src:function)"
         src2xml_cmd = ["srcml", "--xpath=//src:function", src]
         xml2code_cmd = ['srcml', '--xpath=string(//src:function)']
-
-        # ps = subprocess.Popen(src2xml_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-        # output = subprocess.Popen(xml2code_cmd, stdin=ps.stdout, stdout=subprocess.PIPE, text=True)
-        # output, errors = output.communicate()
-        # print(output)
-        # print(errors)
         ps = subprocess.Popen(src2xml_cmd, stdout=subprocess.PIPE, text=True)
         return ps.stdout.read()
 
@@ -63,30 +52,25 @@ class Src2Funs:
     def extract_functions_from_srcML(self, tree):
         """get all function bodies"""
         fun_trees = self.xpath_on_tree(tree, '//src:function')
-        functions = []
-
-        for fun_tree in fun_trees:
-            functions.append(self.function_tree2source(fun_tree))
-
-        if len(functions) > 0:
-            return functions
-        else:
-            return [head + tail]
+        functions = [self.function_tree2source(
+            fun_tree) for fun_tree in fun_trees]
+        return functions
 
     def write_functions_file(self, file, functions):
         """ write all functions to a file"""
-        with open(file, 'w') as f:
-            for item in functions:
-                f.write("%s\n\n" % item)
+        with open(file, 'w') as fp:
+            fp.write('\n\n'.join(functions))
 
     def src2src_functions(self, src):
         """retrieve source functions from the given src:file/dir of source code"""
-        try:
-            tree = self.src2xml(src)
-            tree = etree.fromstring(tree.encode('utf-8'))
-            return self.extract_functions_from_srcML(tree)
-        except Exception as err:
-            print(err)
+        # try:
+        tree = self.src2xml(src)
+        tree = etree.fromstring(tree.encode('utf-8'))
+        return self.extract_functions_from_srcML(tree)
+
+        # except Exception as err:
+        #     print(f'Error on src2src_function code: {err}')
+        #     return []
 
 
 if __name__ == "__main__":

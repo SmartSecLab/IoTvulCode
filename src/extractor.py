@@ -20,11 +20,14 @@ from zipfile import ZipFile
 import lizard
 import pandas as pd
 import requests
+import tqdm
 import yaml
 from humanfriendly import format_timespan
 from pylibsrcml import srcml
+from tabulate import tabulate
 
 from src.analyzers import Analyzers
+from src.collect_funs import FunsCollector
 # User defined modules
 from src.sqlite import Database
 from src.utility import Utility
@@ -33,6 +36,7 @@ from src.utility import Utility
 class Extractor:
     def __init__(self):
         self.util = Utility()
+        self.funcol = FunsCollector()
         self.config_file = "ext_projects.yaml"
         self.config = self.util.load_config(self.config_file)
 
@@ -48,383 +52,221 @@ class Extractor:
             "defaultlevel",
         ]
         self.start_time = time.time()
-
         db_file = self.config['save']['database']
-        db_exists = Path(db_file).exists()
 
         # exit if override set to False
-        if db_exists:
-            # check if the database file exists or override option is set to False
+        if Path(db_file).exists():
             print(
                 f"The flaw/metric data you want to create already exists: \n{db_file}")
-            if self.config['save']['override'] is False:
-                print(f"Provide another database name or set override option to True in the config file: \n \
-                        {self.config_file}!")
-                exit(1)
-            else:
+            if self.config['save']['override']:
                 print(f"Overriding the existing database: \n{db_file}")
                 self.db = Database(db_file=db_file)
+            else:
+                print(f"Provide another database name or set \
+                override option to True in the config file: \n \
+                        {self.config_file}!")
+                exit(1)
         else:
             self.db = Database(db_file=db_file)
 
-
-# ================= Process CWE ==================================
-
-    def extract_cwe(self, cwe) -> str:
-        """ Extract CWE type information,
-        In case of Rats tool's 'CWE-unknown' list, make it just a single item."""
-        cwe = list(set(cwe)) if isinstance(cwe, list) else cwe
-
-        if len(cwe) > 0 and isinstance(cwe, list):
-            if len(cwe) > 1 and 'CWE-unknown' in cwe:
-                # remove 'CWE-unknown' if the sample is already labeled as a known vulnerability.
-                cwe.remove('CWE-unknown')
-
-            if len(cwe) == 1:
-                cwe = cwe[0]
-        else:
-            cwe = 'CWE-unknown'
-        return str(cwe)
-
-
-# ================= extract each function =======================
-
-    def extract_each_function(self, liz_file, fp, fun_name, tuples):
-        """get the context of the function
+    def save_file_data(self, df_flaw, df_fun):
         """
-        vul_statements = []
-        cwe = []
+        Generate flaw file and add it to the database
+        """
+        if len(df_flaw) > 0:
+            df_flaw = df_flaw.astype(str)
+            # Add benign samples to the statement-level data
+            if len(df_fun) > 0:
+                df_flaw_benign = self.util.gen_benign(self.config, df_fun)
+                df_flaw = pd.concat([df_flaw, df_flaw_benign])
 
-        # get the function block
-        fun = liz_file.fun_name.__dict__
-        df_fun = pd.DataFrame.from_dict(fun)
+            df_flaw['project'] = self.project
+            df_flaw.to_sql('statement', con=self.db.conn,
+                           if_exists='append', index=False)
 
-        start = int(fun["start_line"])
-        end = int(fun["end_line"])
-        # moves the header to the initial point of the file
-        fp.seek(0)
+        if len(df_fun) > 0:
+            df_fun = df_fun.astype(str)
+            df_fun['project'] = self.project
+            df_fun.to_sql('function', con=self.db.conn,
+                          if_exists='append', index=False)
 
-        fun_block = [
-            line for line in itertools.islice(fp, start, end)]
-        fp.seek(0)
-
-        # check if any of the lines of the file belong to any functions
-        for index, (l, c, cnt, t) in enumerate(tuples):
-
-            # checks vulnerability condition
-            if (isinstance(l, int)) and (start <= l < end):
-                vline = ''
-                if t.lower() == "cppcheck" or t.lower() == "rats":
-                    vline = fp.readlines()[l]
-                    fp.seek(0)
-                if vline != '' and cnt != cnt:
-                    cnt = vline
-
-                vul_statements.append((cnt, c))
-                cwe.append(c)
-
-        if len(cwe) == 0:
-            cwe.append('Benign')
-
-        # rename filename to file to make it consistent with statement
-        df_fun = df_fun.rename(
-            columns={"filename": "file"})
-
-        df_fun['code'] = fun["long_name"] + "".join(fun_block)
-        df_fun["fun_name"] = fun["name"]
-        df_fun["content"] = (
-            str(vul_statements) if len(
-                vul_statements) > 0 else "")
-        df_fun["isVul"] = 1 if cwe else 0
-        df_fun["cwe"] = self.extract_cwe(cwe)
-        df_fun["project"] = self.url
-        return df_fun
-
-# ================= Extract Functions ==================================
-    def extract_functions(self, source_file, lines, cwes, context, tool=['cppcheck']):
-        """split the given file into a list of function blocks and return their metrics into a dataframe.
-        <guru> I think there is a problem in lizard detecting the correct full_parameters
-        either we have to concatenate two lines of full_parameters or ignore it 
-        and take it from long_name if needed.
-        drop['full_parameters', 'fan_in', 'fan_out', 'general_fan_out'] because 
-        the lizard has not properly implemented these parameters yet.
-        check if the vulnerability content/statement appears in the function block or not.
-        type of the vul line should be int and then lies in the function block.
-        # """
-        df_file = pd.DataFrame()
-        tuples = zip(lines, cwes, context, tool)
-
-        # TODO: review this code now
-        with open(source_file, "r", encoding='utf-8', errors="surrogateescape") as fp:
-
-            source_code = fp.read()
-            liz_file = lizard.analyze_file.analyze_source_code(
-                source_file, source_code)
-
-            # check liz_file does not have fun_name attribute
-            if hasattr(liz_file, 'fun_name'):
-
-                for i, fun_name in enumerate(liz_file.function_list):
-                    df_fun = self.extract_each_function(
-                        liz_file, fp, fun_name, tuples)
-                    df_file = pd.concat([df_file, df_fun])
-
-        if len(df_file) > 0:
-            # drop duplicates and keep a single row
-            df_file = df_file.drop_duplicates(
-                subset=['file', 'long_name', 'start_line', 'end_line', 'cwe'],
-                keep='last'
-            ).reset_index(drop=True)
-
-            if set(self.cols_filter).issubset(set(list(df_file.columns))):
-                df_file = df_file.drop(self.cols_filter, axis=1)
-        else:
-            print(f'No function found in the file: {source_file}')
-        return df_file
-
-# ================= Compose Flaws ==================================
-
-    def compose_file_flaws(self, file, zip_obj=None):
-        """convert zipped file stream - tempfile to pandas dataframe."""
-        file_content = "".encode("utf-8")
-        df_flaw = pd.DataFrame()
-        df_fun = pd.DataFrame()
-
+    def read_file_content(self, file, zip_obj):
+        """read file content from zip_obj or file"""
         if zip_obj:
             with zip_obj.open(file) as fp:
                 file_content = fp.read()
         else:
             with open(file) as fp:
                 try:
-                    # use encoding arg otherwise, FlawFinder shows an encoding error
+                    # use encoding arg otherwise, FlawFinder shows
+                    # an encoding error
                     file_content = fp.read().encode("utf-8")
                 except UnicodeDecodeError as err:
                     file_content = fp.read().encode("latin-1")
                     print(f"UnicodeDecodeError: {err} for file: {file}")
+        return file_content
+
+    def compose_file_flaws(self, file, zip_obj=None):
+        """convert zipped file stream - tempfile to pandas dataframe."""
+        file_content = "".encode("utf-8")
+        df_flaw = pd.DataFrame()
+
+        # read file content from zip_obj or file
+        file_content = self.read_file_content(file, zip_obj)
 
         fp = tempfile.NamedTemporaryFile(suffix="_Flawfinder", prefix="File_")
-
-        # deal with the temp file of the extracted zipped file
         try:
             fp.write(file_content)
             # merge the results generated by all the tools
             df_flaw = self.sect.merge_tools_result(fname=file)
-
-            if len(df_flaw):
-                df_fun = self.extract_functions(
-                    source_file=file,
-                    lines=list(df_flaw.line),
-                    cwes=list(df_flaw.cwe),
-                    context=list(df_flaw.context),
-                    tool=list(df_flaw.tool),
-                )
-        except OSError:
-            print("Could not open/read file:", file)
-            sys.exit(1)
+        except OSError as err:
+            print(f"Could not open/read file: {err} at", file)
         finally:
             fp.close()
-        return df_flaw, df_fun
+        return df_flaw
 
-    def check_internet(self, url):
-        """check if the internet is working or not."""
-        try:
-            response = requests.get(self.url)
-            return True if response.status_code < 400 else False
-        except Exception as exc:
-            print(f"Invalid URL! {exc}")
-            return False
-
-    def retrieve_zip(self, url):
-        """Fetching list of C/C++ files from zip file of the project url."""
-        if self.check_internet(self.url):
-            r = requests.get(self.url)
-            # BytesIO keeps the file in memory
-            return ZipFile(BytesIO(r.content))
+    def run_fetching_files(self, files, status, zipobj):
+        """run fetching files """
+        if len(files) <= 0:
+            print(f"None of the file in the specified project \
+                    \nin given PL list types to extract: {self.sect.pl_list}")
         else:
-            print("Internet is not working or the URL is Invalid!")
-            return None
-
-# ================= Convert Project to DB ==================================
-    def project2db(self, url, status):
-        """concatenate all the output dataframes of all the files"""
-        print("\n" + "-" * 50)
-
-        # initialization of empty dataframes
-        df_flaw_prj = pd.DataFrame()
-        df_fun_prj = pd.DataFrame()
-        selected_files = []
-        zipobj = None
-        fc = 0
-        self.url = url
-        print("extracting for flaws (takes a while)....")
-
-        if os.path.isdir(self.url):
-            files = [str(f) for f in Path(self.url).rglob("*.*")]
-            selected_files = [
-                x for x in files if self.sect.guess_pl(x) in self.sect.pl_list]
-        else:
-            print('prj URL:', self.url)
-            zipobj = self.retrieve_zip(self.url)
-            if zipobj != None:
-                files = zipobj.namelist()
-                selected_files = [
-                    x for x in files if self.sect.guess_pl(x, zipobj) in self.sect.pl_list]
-            else:
-                print("Invalid URL!")
-                return None
-
-        print(f'#files in the project: {len(selected_files)}')
-
-        # TODO: incremental fetching of the information.
-        if self.db.table_exists('statement'):
-            extned_files = set(
-                list(pd.read_sql('SELECT file from statement', self.db.conn)['file']))
-            selected_files = list(set(selected_files) - extned_files)
-
-            print(f'#files already extned: {len(extned_files)}')
-            print(f'#files to ext: {len(selected_files)}\n')
-
-        if len(selected_files) > 0:
             change_stat = True if status == 'Not Started' else False
 
-            # iterate on every unique file
-            for file in list(set(selected_files)):
-                df_benign = pd.DataFrame()
+            for index, file in enumerate(files):
+                # print(f"\n\n" + "="*50)
+                print(f"Scanning File: {file}")
+                # print("="*50)
+                df_flaw = self.compose_file_flaws(file, zipobj)
+                df_fun = self.funcol.polulate_function_table(file, df_flaw)
 
-                df_flaw_file, df_fun_file = self.compose_file_flaws(
-                    file, zipobj)
-
-                try:
-                    if len(df_flaw_file) > 0 and df_flaw_file.file.isna().any() == False:
-
-                        df_flaw_file = df_flaw_file.astype(str)
-
-                        # Add benign samples to the statement-level data
-                        if len(df_fun_file) > 0:
-                            df_benign = self.util.gen_benign(df_fun_file)
-                            df_flaw_file = pd.concat([df_flaw_file, df_benign])
-
-                        df_flaw_file['project'] = self.url
-
-                        df_flaw_file.to_sql('statement', con=self.db.conn,
-                                            if_exists='append', index=False)
-
-                        # Change status to 'In Progress' once if it is 'Not Started'
-                        if change_stat:
-                            self.db.change_status(self.url, "In Progress")
-                            change_stat = False
-
-                    if len(df_fun_file) > 0:
-                        df_fun_file = df_fun_file.astype(str)
-                        df_fun_file['project'] = self.url
-                        df_fun_file.to_sql('function', con=self.db.conn,
-                                           if_exists='append', index=False)
-
-                # TODO: handle the exception
-                except Exception as exc:
-                    print(f"Error: {exc} for file: {file}")
+                self.save_file_data(df_flaw, df_fun)
 
                 # verbose on every 100 files
-                if fc % 100 == 0:
-                    print(f"\n#Files: {fc + 1} file(s) completed!")
-                    time_elapsed = time.time() - self.start_time
-                    print(f"Time elapsed: {format_timespan(time_elapsed)}")
-                    print("Continue gathering....\n")
+                if index % 100 == 0:  # [0 % 100 = True] for first index
+                    print(f"\n#Files: {index + 1} file(s) completed!")
+                    self.util.show_time_elapsed(start_time=self.start_time)
+                    self.db.check_progress(project=self.project)
 
-                fc = fc + 1
+                    if change_stat:
+                        self.db.change_status(self.project, "In Progress")
+                        change_stat = False
 
-            print("\n" + "-" * 10 + f" Project Report: {self.url} " + "-" * 10)
-            self.db.show_shape('statement', project=self.url)
-            self.db.show_cwe_benign('statement')
+    def find_remaining_files(self, project_files):
+        """incremental fetching of the remaining files."""
+        project_files = set(project_files)
 
-            self.db.show_shape('function', project=self.url)
-            self.db.show_cwe_benign('function')
-            print("-" * 50 + "\n")
+        if self.db.table_exists('statement'):
+            extracted_files = set(
+                list(pd.read_sql('SELECT file from statement', self.db.conn)['file']))
+            remaining_files = list(project_files - extracted_files)
 
+            print(f'#files already extracted: {len(extracted_files)}')
+            print(f'#files to extract: {len(remaining_files)}\n')
         else:
-            print(f"No file in the specified project \
-                    of the given PL list types: {pl_list}")
-        return True
+            remaining_files = list(project_files)
+        return remaining_files
 
+    def project2db(self, project):
+        """concatenate all the output dataframes of all files"""
+        zipobj = None
+        if os.path.isdir(project):
+            # if the url is a directory, get all the files in it
+            all_files = [str(f) for f in Path(project).rglob("*.*")]
+            # get the files that match the file extensions we are looking for
+            program_files = [
+                x for x in all_files if self.sect.guess_pl(x) in self.sect.pl_list]
+        else:
+            # if the url is a zip file, get all the files in it
+            zipobj = self.util.retrieve_zip(project)
+            if zipobj != None:
+                files = zipobj.namelist()
+                # get the files that match the file extensions we are looking for
+                program_files = [
+                    x for x in all_files if self.sect.guess_pl(x, zipobj) in self.sect.pl_list]
+            else:
+                print("Invalid URL!")
+                return False
 
-# ================= iterate on extracting each project ======================
+        if len(program_files) <= 0:
+            print("No program files present! Please check the url!")
+            return False
+        else:
+            print(f'#files in the project: {len(program_files)}')
+            remaining_files = self.find_remaining_files(
+                project_files=program_files)
 
+            self.run_fetching_files(files=remaining_files,
+                                    status=self.db.get_status(project),
+                                    zipobj=zipobj
+                                    )
+            return True
 
     def iterate_projects(self, prj_dir_urls):
         """iterate on every project"""
-        df_flaw = pd.DataFrame()
-        df_fun = pd.DataFrame()
-
-        df_prj = self.db.query_project_table()
+        df_prj = self.db.save_project_meta()
         prj_dir_urls = list(df_prj['project'])
 
         for prj in prj_dir_urls:
+            self.project = prj
             stat = self.db.get_status(prj)
 
             if stat == 'Complete':
-                print(f"The project had been already extracted!")
+                # print(f"The project had been already extracted!")
+                pass
 
             elif stat == 'Not Started' or stat == 'In Progress':
-                # if os.path.isfile(prj) == False or os.path.isdir(prj) == False:
-
                 # extract the project directory/URL
-                success = self.project2db(prj, stat)
-                if success is True:
+                success = self.project2db(prj)
+
+                if success:
                     # Change the project status to complete
-                    self.db.change_status(self.url, 'Complete')
+                    self.db.change_status(prj, 'Complete')
                 else:
                     print("Non-zipped project!")
             else:
-                print(f"Project: {prj} is not in the list!")
-            print('\n\n')
+                print(f"Project is not in the list!")
+                print('\n\n')
 
         print("=" * 50)
-        print("\n\n" + "=" * 15 + " Final Composite Report " + "=" * 15)
-
-        # show the final report of the project
-        self.db.show_shape(table_name='statement', project='all')
-        self.db.show_cwe_benign('statement')
-
-        self.db.show_shape(table_name='function', project='all')
-        self.db.show_cwe_benign('function')
-        print("=" * 50 + "\n")
-
-        self.db.query_project_table()
+        print("All the given projects were extracted!")
+        print("=" * 50)
+        self.db.check_progress(project='all')
+        self.db.display_table(table='project')
         self.db.conn.commit()
         self.db.cursor.close()
 
-
-# ================= Refine Data ==================================
-
-
-    def refine_data(self, table_name):
+    def refine_data(self, table):
         """refine the data, and filter out duplicates 
         after the extraction of all the raw data"""
-        df = pd.DataFrame()
-
-        if self.db.table_exists(table_name):
-            df = pd.read_sql(f"SELECT * FROM {table_name}", con=self.db.conn)
+        if self.db.table_exists(table):
+            df = pd.read_sql(f"SELECT * FROM {table}", con=self.db.conn)
             print("\n\n" + "="*15 +
-                  f" Refining Data: [{table_name}] " + "="*15)
+                  f" Refining Data: [{table}] " + "="*15)
+            print('=' * 55)
             print('Before filtering:')
-            self.util.show_info_pd(df, table_name)
+            print("-"*20)
+            self.util.show_info_pd(df, table)
 
             # filter the results
             df = self.util.filter_results(df)
 
             print('After filtering:')
-            self.util.show_info_pd(df, table_name)
-            print("="*50)
-            print("\n" + "-"*50)
-            df.to_sql(table_name,
+            print("-"*20)
+            self.util.show_info_pd(df, table)
+            # print("="*50)
+            # print("\n" + "-"*30)
+            df.to_sql(table,
                       con=self.db.conn,
                       if_exists='replace',
                       index=False)
-            print(f"Table: [{table_name}] is updated!")
-            print("-"*50 + "\n")
+            print(f"Table: [{table}] updated!")
+            print("="*55)
+            print("="*55 + "\n")
+            return df
         else:
-            print(f"Table: [{table_name}] does not exist!")
-        return df
+            print(f"Extraction is not possible on empty data: [{table}]!")
+            return pd.DataFrame()
 
 
 if __name__ == "__main__":
@@ -443,4 +285,5 @@ if __name__ == "__main__":
     time_elapsed = time.time() - ext.start_time
     print("\n" + "="*50)
     print(f"Total time elapsed: {format_timespan(time_elapsed)}")
+    print(f'The database is saved at: {ext.config["save"]["database"]}')
     print("="*50)
