@@ -19,7 +19,8 @@ class Src2Funs:
 
     def src2xml(self, src):
         """generate srcML tree from the given source file or directory"""
-        # srcml --xpath="//src:function" '../data/projects/contiki-2.4/apps/ftp/ftpc.c' | srcml --xpath="string(//src:function)"
+        # srcml --xpath="//src:function" '../data/projects/contiki-2.4/apps/ftp/ftpc.c'
+        # | srcml --xpath="string(//src:function)"
         src2xml_cmd = ["srcml", "--xpath=//src:function", src]
         xml2code_cmd = ['srcml', '--xpath=string(//src:function)']
         ps = subprocess.Popen(src2xml_cmd, stdout=subprocess.PIPE, text=True)
@@ -28,7 +29,9 @@ class Src2Funs:
     def xpath_on_tree(self, the_tree, xpath_query):
         """Run an xpath query on a srcML parsetree"""
         try:
-            return the_tree.xpath(xpath_query, namespaces={'src': 'http://www.srcML.org/srcML/src'})
+            return the_tree.xpath(xpath_query, namespaces={
+                'src': 'http://www.srcML.org/srcML/src'
+            })
         except etree.XPathEvalError as err:
             print(err)
             return None
@@ -62,7 +65,7 @@ class Src2Funs:
             fp.write('\n\n'.join(functions))
 
     def src2src_functions(self, src):
-        """retrieve source functions from the given src:file/dir of source code"""
+        """retrieve functions from the src:file/dir of source code"""
         # try:
         tree = self.src2xml(src)
         tree = etree.fromstring(tree.encode('utf-8'))

@@ -1,6 +1,7 @@
 import random
 import sqlite3
 from sqlite3 import connect
+from pathlib import Path
 
 import pandas as pd
 import yaml
@@ -9,9 +10,7 @@ from src.utility import Utility
 
 
 class Database:
-    def __init__(self, db_file):
-        self.conn = connect(db_file)
-        self.cursor = self.conn.cursor()
+    def __init__(self):
         self.util = Utility()
 
     def __enter__(self):
@@ -21,13 +20,30 @@ class Database:
         self.conn.commit()
         self.cursor.close()
 
+    def db_exists(self, db_file, override):
+        """ check for existing file and prompt user to overwrite or not..."""
+        print('='*40)
+        if Path(db_file).exists():
+            print(f"The database already exists: [{db_file}]")
+            if override:
+                print("Overridden of the existing database!")
+            else:
+                print("Provide another database name!")
+                print("Or set override option to True in the config file!")
+                exit(1)
+        print('='*40)
+
+        self.conn = connect(db_file)
+        self.cursor = self.conn.cursor()
+
     def table_exists(self, table):
         """ checks if table exists in database """
         df = pd.read_sql(
             "SELECT name FROM sqlite_master WHERE type='table' \
                 AND name='" + table + "'", con=self.conn)
         if len(df) <= 0:
-            print(f"Table [{table}] not found in the record!\n")
+            # print(f"Table [{table}] not found in the record!\n")
+            print('Scanning...')
             return False
         else:
             # print(f"Table [{table}] found in the record!\n")

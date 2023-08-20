@@ -123,51 +123,69 @@ class Utility():
                 ignore_index=True)
         return df_fun.reset_index(drop=True)
 
-    def filter_results(self, df):
-        """apply several filters to the dataframe"""
-        print("\n" + "-" * 50)
-        code_col = "code"
-        # for statement table preprocessing
-        if 'context' in list(df.columns):
-            code_col = 'context'
-            df[code_col] = df[code_col].apply(
-                lambda x: re.sub(r"\s+", " ", str(x)).strip())
+    # def filter_results(self, df):
+    #     """apply several filters to the dataframe"""
+    #     print("-" * 50)
+    #     code_col = "code"
+    #     print(f'\n\ndataframe columns: {df.columns}\n')
+    #     # statement preprocessing
+    #     if 'context' in list(df.columns):
+    #         code_col = 'context'
+    #         df[code_col] = df[code_col].apply(
+    #             lambda x: re.sub(r"\s+", " ", str(x)).strip())
 
+    #     # Step 1: drop duplicates from all rows
+    #     len_s0 = len(df)
+    #     # df = df.drop_duplicates(
+    #     #     subset=["cwe", code_col],
+    #     #     keep='first',
+    #     #     ignore_index=True)
+    #     df = df.drop_duplicates().reset_index(drop=True)
+
+    #     len_s1 = len(df)
+    #     print(f"Filter-1: #[{len_s0-len_s1} out of {len_s0}]"
+    #           + "duplicates were dropped!")
+
+    #     # Step 2: drop duplicates from ambiguous rows on the context column
+    #     # (keeping only a first occurrence, i.e, vul/cwe sample)
+    #     df = (
+    #         df.sort_values(by="cwe", ascending=True)
+    #         .drop_duplicates(subset=code_col,
+    #                          keep="first",
+    #                          ignore_index=True)
+    #         # .reset_index(drop=True)
+    #     )
+    #     print(f"Filter-2: #[{len_s1-len(df)} out of {len_s1}]"
+    #           + "ambiquous were dropped!")
+    #     print("-" * 50 + "\n")
+    #     return df
+
+    def filter_results(self, df):
+        '''filter duplicates based on given columns'''
+        print("-" * 50)
+        check_cols = ['code', 'context', 'cwe', 'isVul', 'text']
+        # table-wise columns to check duplicates
+        check_cols = [x for x in df.columns if x in check_cols]
         # Step 1: drop duplicates from all rows
         len_s0 = len(df)
         df = df.drop_duplicates(
-            subset=["cwe", code_col]).reset_index(drop=True)
-        len_s1 = len(df)
-        print(
-            f"#[{len_s0-len_s1} out of {len_s0}] duplicate were dropped!")
-
-        # Step 2: drop duplicates from ambiguous rows on the context column
-        # (keeping only a first occurrence, i.e, vul/cwe sample)
-        df = (
-            df.sort_values(by="cwe", ascending=True)
-            .drop_duplicates(subset=code_col, keep="first")
-            .reset_index(drop=True)
-        )
-        print(
-            f"#[{len_s1-len(df)} out of {len_s1}] ambiquous samples were dropped!")
-        print("-" * 50 + "\n")
-        return df
+            subset=check_cols, keep='first')
+        print(f"#[{len(df)} out of {len_s0}]"
+              + "duplicates were dropped!")
+        return df.reset_index(drop=True)
 
     def show_info_pd(self, df, name):
-        print(
-            f"\nShape of the [{name}] data of all the projects: {df.shape}")
-        print(
-            f" #vulnerable: {len(df[df.cwe!='Benign'])}")
-        print(
-            f" #benign: {len(df[df.cwe=='Benign'])}\n")
+        print(f"\nShape of [{name}] data of all the projects: {df.shape}")
+        print(f" #vulnerable: {len(df[df.cwe!='Benign'])}")
+        print(f" #benign: {len(df[df.cwe=='Benign'])}\n")
 
     def save_binary(filename, dfs):
         """save a dataframe to a binary file"""
-        dfs["isMalicious"] = dfs["cwe"].apply(
+        dfs["isVul"] = dfs["cwe"].apply(
             lambda x: 1 if x != "benign" else 0)
         dfs = dfs.rename(columns={"context": "code"})
-        dfs[["code", "isMalicious"]].to_csv(filename, index=False)
-        return dfs[["code", "isMalicious"]]
+        dfs[["code", "isVul"]].to_csv(filename, index=False)
+        return dfs[["code", "isVul"]]
 
 
 if __name__ == "__main__":
@@ -181,10 +199,9 @@ if __name__ == "__main__":
 
     if override == False:
         if os.path.exists(stat) or os.path.exists(fun):
-            print(
-                f"The statement/function dataset you want to create already \
-                    exist: {stat}/{fun}\n provide another filename"
-            )
+            print(f"The statement/function dataset"
+                  + "you want to create already exist: "
+                  + "{stat}/{fun}\n provide another filename")
             exit(0)
 
     print('-'*30)

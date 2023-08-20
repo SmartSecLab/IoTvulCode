@@ -1,7 +1,7 @@
 # config file for data extraction from different IoT projects:
 projects: [
-    # "data/projects/contiki-2.4",
-    # data/projects/contiki-2.4/tools
+    "data/projects/contiki-2.4",
+    # data/projects/contiki-2.4/tools,
     # "data/projects/linux-rpi-6.1.y",
     # "data/projects/contiki-2.4/apps",
     # "https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download",
@@ -10,11 +10,11 @@ projects: [
     # "https://github.com/raspberrypi/firmware/archive/refs/heads/master.zip",
     # "https://github.com/SmartSecLab/ENViSEC/archive/refs/heads/main.zip",
     # "/Users/guru/research/contiki-master",
-    "/Users/guru/research/contiki-master/apps/webbrowser/",
-    # data/projects/contiki-2.4/cpu/cc2430/dev,
-    # /Users/guru/research/projects/gnucobol-3.2,
-    # /Users/guru/research/projects/gnucobol-3.2/libcob/mlio.c,
-    /Users/guru/research/projects/gnucobol-3.2/lib/,
+    # "/Users/guru/research/contiki-master/",
+    # data/projects/contiki-2.4/cpu/cc2430/,
+    /Users/guru/research/projects/gnucobol-3.2,
+    # /Users/guru/research/projects/gnucobol-3.2/libcob,
+    # /Users/guru/research/projects/gnucobol-3.2/lib/,
   ]
 
 save:
