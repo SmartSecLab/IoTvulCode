@@ -115,8 +115,8 @@ class Extractor:
     def run_fetching_files(self, files, status, zipobj):
         """run fetching files """
         if len(files) <= 0:
-            print(f"None of the file in the specified project \
-                    \nin given PL list types to extract: {self.sect.pl_list}")
+            print("None of the file in the specified project" +
+                  f"\nin given PL list types to extract: {self.sect.pl_list}")
         else:
             change_stat = True if status == 'Not Started' else False
 
@@ -282,6 +282,7 @@ class Extractor:
 
         # final operations to the database
         self.db.conn.commit()
+        self.db.conn.execute("VACUUM")  # optimize the storage
         self.db.cursor.close()
 
 
