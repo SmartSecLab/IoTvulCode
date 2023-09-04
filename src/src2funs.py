@@ -22,9 +22,18 @@ class Src2Funs:
         # srcml --xpath="//src:function" '../data/projects/contiki-2.4/apps/ftp/ftpc.c'
         # | srcml --xpath="string(//src:function)"
         src2xml_cmd = ["srcml", "--xpath=//src:function", src]
-        xml2code_cmd = ['srcml', '--xpath=string(//src:function)']
-        ps = subprocess.Popen(src2xml_cmd, stdout=subprocess.PIPE, text=True)
-        return ps.stdout.read()
+        # xml2code_cmd = ['srcml', '--xpath=string(//src:function)']
+        xml = None
+        try:
+            ps = subprocess.Popen(src2xml_cmd,
+                                  stdout=subprocess.PIPE,
+                                  text=True,
+                                  )
+            xml = ps.stdout.read()
+        except subprocess.TimeoutExpired as err:
+            print(err)
+        print('xml generated!')
+        return xml
 
     def xpath_on_tree(self, the_tree, xpath_query):
         """Run an xpath query on a srcML parsetree"""
@@ -57,6 +66,7 @@ class Src2Funs:
         fun_trees = self.xpath_on_tree(tree, '//src:function')
         functions = [self.function_tree2source(
             fun_tree) for fun_tree in fun_trees]
+        print('Functions generated!')
         return functions
 
     def write_functions_file(self, file, functions):
@@ -69,6 +79,7 @@ class Src2Funs:
         # try:
         tree = self.src2xml(src)
         tree = etree.fromstring(tree.encode('utf-8'))
+        print('Tree represented!')
         return self.extract_functions_from_srcML(tree)
 
         # except Exception as err:

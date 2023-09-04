@@ -16,12 +16,14 @@ import xml.etree.ElementTree as et
 from io import BytesIO
 from pathlib import Path
 from zipfile import ZipFile
-
+import threading as th
 import lizard
 import pandas as pd
 import requests
 import tqdm
 import yaml
+import signal
+import time
 from humanfriendly import format_timespan
 from pylibsrcml import srcml
 from tabulate import tabulate
@@ -31,6 +33,15 @@ from src.collect_funs import FunsCollector
 # User defined modules
 from src.sqlite import Database
 from src.utility import Utility
+
+
+def handle_timeout(signum, frame):
+    raise TimeoutError
+
+
+def set_alarm():
+    signal.signal(signal.SIGALRM, handle_timeout)
+    signal.alarm(2)  # 5 seconds
 
 
 class Extractor:
@@ -53,12 +64,14 @@ class Extractor:
         ]
         self.start_time = time.time()
         db_file = self.config['save']['database']
+        self.refine_on_every = self.config['save']['refine_on_every']
+
         self.db = Database()
         self.db.db_exists(db_file, self.config['save']['override'])
 
     def save_file_data(self, df_flaw, df_fun):
         """
-        Generate flaw file and add it to the database
+        Generate a flaw file and add it to the database
         """
         if len(df_flaw) > 0:
             df_flaw = df_flaw.astype(str)
@@ -83,6 +96,7 @@ class Extractor:
             with zip_obj.open(file) as fp:
                 file_content = fp.read()
         else:
+
             with open(file) as fp:
                 try:
                     # use encoding arg otherwise, FlawFinder shows
@@ -91,6 +105,10 @@ class Extractor:
                 except UnicodeDecodeError as err:
                     file_content = fp.read().encode("latin-1")
                     print(f"UnicodeDecodeError: {err} for file: {file}")
+                except TimeoutError as err:
+                    print(f"TimeoutError: {err} for file: {file}")
+                    # skip the file
+                    file_content = "".encode("utf-8")
         return file_content
 
     def compose_file_flaws(self, file, zip_obj=None):
@@ -112,25 +130,62 @@ class Extractor:
             fp.close()
         return df_flaw
 
+    def refine_data(self, table):
+        """refine the data, and filter out duplicates 
+        after the extraction of all the raw data"""
+        df = pd.DataFrame()
+        if self.db.table_exists(table):
+            df = pd.read_sql(f"SELECT * FROM {table}", con=self.db.conn)
+            print("\n\n" + "="*15 +
+                  f" Refining Data: [{table}] " + "="*15)
+            print('=' * 55)
+            print('Before filtering:')
+            print("-"*20)
+            self.util.show_info_pd(df, table)
+
+            # filter the results
+            df = self.util.filter_results(df)
+
+            print('\nAfter filtering:')
+            print("-"*20)
+            self.util.show_info_pd(df, table)
+            print('Updating...')
+            df.to_sql(name=table,
+                      con=self.db.conn,
+                      if_exists='replace',
+                      index=False)
+            print(f"[{table}] data got updated!")
+            print("="*55 + "\n")
+        else:
+            print(f"Extraction is not possible on empty data: [{table}]!")
+        return df
+
     def run_fetching_files(self, files, status, zipobj):
         """run fetching files """
-        if len(files) <= 0:
+        files_count = len(files)
+        if files_count <= 0:
             print("None of the file in the specified project" +
                   f"\nin given PL list types to extract: {self.sect.pl_list}")
         else:
             change_stat = True if status == 'Not Started' else False
 
             for index, file in enumerate(files):
-                # print(f"\n\n" + "="*50)
-                print(f"Scanning: {file}")
-                # print("="*50)
-                df_flaw = self.compose_file_flaws(file, zipobj)
-                df_fun = self.funcol.polulate_function_table(file, df_flaw)
+                print(f"Scanning [{index+1} of {files_count}]: {file}")
+
+                set_alarm()
+                try:
+                    df_flaw = self.compose_file_flaws(file, zipobj)
+                    print('Generating benign functions....')
+                    df_fun = self.funcol.polulate_function_table(file, df_flaw)
+                    time.sleep(3)
+                except TimeoutError:
+                    print('Long time composing report!')
+                finally:
+                    signal.alarm(0)
 
                 self.save_file_data(df_flaw, df_fun)
 
-                # verbose on every 100 files
-                if index % 100 == 0:  # [0 % 100 = True] for first index
+                if index+1 % self.refine_on_every == 0:
                     print(f"\n#Files: {index + 1} file(s) completed!")
                     self.util.show_time_elapsed(start_time=self.start_time)
                     self.db.check_progress(project=self.project)
@@ -138,6 +193,12 @@ class Extractor:
                     if change_stat:
                         self.db.change_status(self.project, "In Progress")
                         change_stat = False
+
+                    # apply refining on every 'refine_on_every' files
+                    self.refine_data('statement')
+                    self.refine_data('function')
+                    self.db.conn.execute("VACUUM")  # optimize the storage
+                    print('Scanning the remaining files...\n')
 
     def find_remaining_files(self, project_files):
         """incremental fetching of the remaining files."""
@@ -191,35 +252,6 @@ class Extractor:
                                     )
             return True
 
-    def refine_data(self, table):
-        """refine the data, and filter out duplicates 
-        after the extraction of all the raw data"""
-        df = pd.DataFrame()
-        if self.db.table_exists(table):
-            df = pd.read_sql(f"SELECT * FROM {table}", con=self.db.conn)
-            print("\n\n" + "="*15 +
-                  f" Refining Data: [{table}] " + "="*15)
-            print('=' * 55)
-            print('Before filtering:')
-            print("-"*20)
-            self.util.show_info_pd(df, table)
-
-            # filter the results
-            df = self.util.filter_results(df)
-
-            print('\nAfter filtering:')
-            print("-"*20)
-            self.util.show_info_pd(df, table)
-            df.to_sql(name=table,
-                      con=self.db.conn,
-                      if_exists='replace',
-                      index=False)
-            print(f"[{table}] data got updated!")
-            print("="*55 + "\n")
-        else:
-            print(f"Extraction is not possible on empty data: [{table}]!")
-        return df
-
     def iterate_projects(self, prj_dir_urls):
         """iterate on every project"""
         df_prj = self.db.save_project_meta()
@@ -260,30 +292,31 @@ class Extractor:
         """Add new projects to the database"""
         status_of_all = ext.iterate_projects(ext.config["projects"])
 
-        # if status_of_all:
-        #     print("Extraction were already complete for all projects!")
-        # else:
+        if status_of_all:
+            print("Extraction were already complete for all projects!")
+            # Refine the data
+            start_time = time.time()
+            ext.refine_data('statement')
+            ext.refine_data('function')
+            time_elapsed = time.time() - start_time
+            print("Time elapsed for filtering: " +
+                  f"{format_timespan(time_elapsed)}")
 
-        # Refine the data
-        start_time = time.time()
-        ext.refine_data('statement')
-        ext.refine_data('function')
-        time_elapsed = time.time() - start_time
-        print("Time elapsed for filtering: " +
-              f"{format_timespan(time_elapsed)}")
+            # total time elapsed
+            time_elapsed = time.time() - ext.start_time
+            print("\n" + "="*50)
+            print(f"Total time elapsed: {format_timespan(time_elapsed)}")
 
-        # total time elapsed
-        time_elapsed = time.time() - ext.start_time
-        print("\n" + "="*50)
-        print(f"Total time elapsed: {format_timespan(time_elapsed)}")
-        print('The database is saved at:' +
-              f'{self.config["save"]["database"]}')
-        print("="*50)
-
-        # final operations to the database
-        self.db.conn.commit()
-        self.db.conn.execute("VACUUM")  # optimize the storage
-        self.db.cursor.close()
+            # final operations to the database
+            self.db.conn.commit()
+            print('executing VACUUM...')
+            self.db.conn.execute("VACUUM")  # optimize the storage
+            self.db.cursor.close()
+            print('The database is saved at: ' +
+                  f'{self.config["save"]["database"]}')
+            print("="*50)
+        else:
+            print("Extraction were not already complete for all!")
 
 
 if __name__ == "__main__":

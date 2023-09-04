@@ -169,10 +169,11 @@ class Utility():
         # Step 1: drop duplicates from all rows
         len_s0 = len(df)
         df = df.drop_duplicates(
-            subset=check_cols, keep='first')
-        print(f"#[{len(df)} out of {len_s0}]"
+            subset=check_cols, keep='first').reset_index(drop=True)
+        print(f"#[{len_s0-len(df)} out of {len_s0}] "
               + "duplicates were dropped!")
-        return df.reset_index(drop=True)
+        print(f'cwe_values: {df.cwe.value_counts()}')
+        return df
 
     def show_info_pd(self, df, name):
         print(f"\nShape of [{name}] data of all the projects: {df.shape}")
