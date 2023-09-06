@@ -128,7 +128,7 @@ class FunsCollector:
                 }
                 if self.is_fun_vul(fun, vul_statement):
                     row['context'] = vul_statement
-                    row['cwe'] = cwe
+                    row['cwe'] = self.extract_cwe(cwe)
                     row['isVul'] = 1
                 else:
                     row['context'] = ''
@@ -155,6 +155,12 @@ class FunsCollector:
         except Exception as err:
             print(f"Error while populating function table: {err} at {file}")
         return df_fun
+
+
+if __name__ == "__main__":
+    # funcol = FunsCollector()
+    # funcol.polulate_function_table()
+    pass
 
     # def extract_each_function(self, liz_file, fp, fun_name, tuples):
     #     """get the context of the function
@@ -247,9 +253,3 @@ class FunsCollector:
     #     else:
     #         print(f'No function found in the file: {source_file}')
     #     return df_file
-
-
-if __name__ == "__main__":
-    # funcol = FunsCollector()
-    # funcol.polulate_function_table()
-    pass
