@@ -114,7 +114,7 @@ class FunsCollector:
             if nall_funs > 200 and len(flaw_records) > 1000:
                 random.seed(20)
                 all_funs = random.sample(all_funs, 10)
-                print(f'Len of funs: {len(all_funs)}')
+                # print(f'Len of funs: {len(all_funs)}')
 
             for fun, record in itertools.product(all_funs, flaw_records):
                 count = count+1

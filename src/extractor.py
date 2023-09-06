@@ -171,17 +171,8 @@ class Extractor:
 
             for index, file in enumerate(files):
                 print(f"Scanning [{index+1} of {files_count}]: {file}")
-
-                set_alarm()
-                try:
-                    df_flaw = self.compose_file_flaws(file, zipobj)
-                    print('Generating benign functions....')
-                    df_fun = self.funcol.polulate_function_table(file, df_flaw)
-                    time.sleep(3)
-                except TimeoutError:
-                    print('Long time composing report!')
-                finally:
-                    signal.alarm(0)
+                df_flaw = self.compose_file_flaws(file, zipobj)
+                df_fun = self.funcol.polulate_function_table(file, df_flaw)
 
                 self.save_file_data(df_flaw, df_fun)
 
