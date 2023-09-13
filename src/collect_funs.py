@@ -62,36 +62,6 @@ class FunsCollector:
                 vul_bool = True
         return vul_bool
 
-    # def extract_functions_expensive(self, source_file, lines, cwes, context, tool=['cppcheck']):
-    #     """split the given file into a list of function blocks
-    #     and return their metrics into a dataframe."""
-    #     df = pd.DataFrame()
-    #     all_funs = self.srcML.src2src_functions(src=source_file)
-
-    #     if len(all_funs) > 0:
-    #         # most expensive steps below
-    #         for fun in all_funs:
-    #             for index, (line, cwe, vul_statement, _) in enumerate(zip(lines, cwes, context, tool)):
-    #                 if isinstance(line, int):
-    #                     row = {
-    #                         'file': source_file,
-    #                         'code': fun
-    #                     }
-    #                     if self.is_fun_vul(fun, vul_statement):
-    #                         row['context'] = vul_statement
-    #                         row['cwe'] = cwe
-    #                         row['isVul'] = 1
-    #                     else:
-    #                         row['context'] = ''
-    #                         row['cwe'] = 'Benign'
-    #                         row['isVul'] = 0
-
-    #                     df = pd.concat(
-    #                         [df, pd.DataFrame([row])], ignore_index=True)
-    #                 else:
-    #                     print(f'Invalid line: {line} at code {vul_statement}')
-    #     return df
-
     def extract_functions(self, source_file, lines, cwes, context, tool=['cppcheck']):
         """split the given file into a list of function blocks 
         and return their metrics into a dataframe."""
@@ -100,9 +70,7 @@ class FunsCollector:
         nall_funs = len(all_funs)
 
         if nall_funs > 0:
-            # print(f'Len of funs: {len(all_funs)}')
             # most expensive steps below
-
             # for big file, we take only 500 functions,
             # otherwise it may introduce quadradic complexity
 
@@ -129,15 +97,12 @@ class FunsCollector:
                 if self.is_fun_vul(fun, vul_statement):
                     row['context'] = vul_statement
                     row['cwe'] = self.extract_cwe(cwe)
-                    row['isVul'] = 1
                 else:
                     row['context'] = ''
                     row['cwe'] = 'Benign'
-                    row['isVul'] = 0
 
                 df = pd.concat(
                     [df, pd.DataFrame([row])], ignore_index=True)
-            # print('Done!')
         return df
 
     def polulate_function_table(self, file, df_flaw):
@@ -208,7 +173,7 @@ if __name__ == "__main__":
     #     df_fun["content"] = (
     #         str(vul_statements) if len(
     #             vul_statements) > 0 else "")
-    #     df_fun["isVul"] = 1 if cwe else 0
+    # df_fun["isVul"] = 1 if cwe else 0
     #     df_fun["cwe"] = self.extract_cwe(cwe)
     #     df_fun["project"] = self.project
     #     return df_fun

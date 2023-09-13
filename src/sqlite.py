@@ -139,6 +139,7 @@ class Database:
         try:
             query = "UPDATE project SET status ='" + \
                 status + "' WHERE project='" + project + "'"
+            print(f'query: {query}')
             self.cursor.execute(query)
             print('-'*50)
             print(f"Project status: {project} [{status}]\n")
@@ -153,17 +154,14 @@ class Database:
         if self.table_exists('project'):
             try:
                 query = "SELECT status FROM project where project='" + project + "'"
-                # print(f"Query: {query}")
                 self.cursor.execute(query)
+                # self.conn.commit()
                 result = self.cursor.fetchone()
 
                 if result is None:
                     print(f"Project [{project}] not found in the database!\n")
                 else:
                     status = result[0]
-                    # print('-'*50)
-                    # print(f"Project: {project} [{status}]")
-                    # print('-'*50)
             except sqlite3.Error as error:
                 print(f"Failed to update SQLite table, {error}")
         return status

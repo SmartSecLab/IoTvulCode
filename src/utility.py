@@ -4,20 +4,14 @@
 import os
 import random
 import re
-import subprocess as sub
 import time
 import warnings
-import xml.etree.ElementTree as et
 from pathlib import Path
-from humanfriendly import format_timespan
 
-import lizard
-import matplotlib.pyplot as plt
 import pandas as pd
-import plotly.express as px
-import seaborn as sns
+import requests
 import yaml
-from pylibsrcml import srcml
+from humanfriendly import format_timespan
 
 warnings.filterwarnings("ignore")
 
@@ -42,7 +36,7 @@ class Utility():
             except yaml.YAMLError as err:
                 return err
 
-    def check_internet(url):
+    def check_internet(self, url: str) -> bool:
         """check if the internet is working or not."""
         try:
             response = requests.get(url)
@@ -51,7 +45,7 @@ class Utility():
             print(f"Invalid URL! {exc}")
             return False
 
-    def retrieve_zip(self, url):
+    def retrieve_zip(self, url: str):
         """Fetching list of C/C++ files from zip file of the project url."""
         if self.check_internet(url):
             r = requests.get(url)
@@ -67,7 +61,7 @@ class Utility():
         print(f"Time elapsed: {format_timespan(time_elapsed)}")
         print("Continue gathering....\n")
 
-    def get_benign_context(self, config, row):
+    def get_benign_context(self, config, row) -> pd.DataFrame():
         """
         filter all lines if it is less than min threshold
         randomly shuffled lines
@@ -112,7 +106,7 @@ class Utility():
         df['line'] = 'unknown'
         return df
 
-    def gen_benign(self, config, dfm):
+    def gen_benign(self, config, dfm) -> pd.DataFrame():
         """create benign samples to the dataframe"""
         df_fun = pd.DataFrame()
 
@@ -120,8 +114,8 @@ class Utility():
             df_get = self.get_benign_context(config, dict(dfm.iloc[i]))
             df_fun = pd.concat(
                 [df_fun, df_get],
-                ignore_index=True)
-        return df_fun.reset_index(drop=True)
+                ignore_index=True).reset_index(drop=True)
+        return df_fun
 
     # def filter_results(self, df):
     #     """apply several filters to the dataframe"""
@@ -160,10 +154,10 @@ class Utility():
     #     print("-" * 50 + "\n")
     #     return df
 
-    def filter_results(self, df):
+    def filter_results(self, df: pd.DataFrame()) -> pd.DataFrame():
         '''filter duplicates based on given columns'''
         print("-" * 50)
-        check_cols = ['code', 'context', 'cwe', 'isVul', 'text']
+        check_cols = ['code', 'context', 'cwe', 'text']
         # table-wise columns to check duplicates
         check_cols = [x for x in df.columns if x in check_cols]
         # Step 1: drop duplicates from all rows
@@ -175,18 +169,20 @@ class Utility():
         print(f'cwe_values: {df.cwe.value_counts()}')
         return df
 
-    def show_info_pd(self, df, name):
+    def show_info_pd(self, df: pd.DataFrame, name: str):
         print(f"\nShape of [{name}] data of all the projects: {df.shape}")
         print(f" #vulnerable: {len(df[df.cwe!='Benign'])}")
         print(f" #benign: {len(df[df.cwe=='Benign'])}\n")
 
-    def save_binary(filename, dfs):
+    def save_binary(self, filename: str, df: pd.DataFrame()) -> pd.DataFrame():
         """save a dataframe to a binary file"""
-        dfs["isVul"] = dfs["cwe"].apply(
-            lambda x: 1 if x != "benign" else 0)
-        dfs = dfs.rename(columns={"context": "code"})
-        dfs[["code", "isVul"]].to_csv(filename, index=False)
-        return dfs[["code", "isVul"]]
+        df["isVul"] = df["cwe"].apply(
+            lambda x: 1 if x != "Benign" else 0)
+        if 'context' in df.columns:
+            df = df.rename(columns={"context": "code"})
+        df = df[["code", "isVul"]]
+        df.to_csv(filename, index=False)
+        return df
 
 
 if __name__ == "__main__":
