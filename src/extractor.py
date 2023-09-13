@@ -166,29 +166,36 @@ class Extractor:
             print("None of the file in the specified project" +
                   f"\nin given PL list types to extract: {self.sect.pl_list}")
         else:
-            change_stat = True if status == 'Not Started' else False
+            # change_stat = True if status == 'Not Started' else False
 
             for index, file in enumerate(files):
-                print(f"Scanning [{index+1} of {files_count}]: {file}")
+                print(f"Scanning [{index+1} of {files_count}]: {file}...")
                 df_flaw = self.compose_file_flaws(file, zipobj)
                 df_fun = self.funcol.polulate_function_table(file, df_flaw)
 
                 self.save_file_data(df_flaw, df_fun)
 
+                if index % self.refine_on_every == 0:
+                    # if change_stat:
+                    self.db.change_status(self.project, "In Progress")
+                    #     change_stat = False
+
                 if index+1 % self.refine_on_every == 0:
                     print(f"\n#Files: {index + 1} file(s) completed!")
                     self.util.show_time_elapsed(start_time=self.start_time)
-                    self.db.check_progress(project=self.project)
-
-                    if change_stat:
-                        self.db.change_status(self.project, "In Progress")
-                        change_stat = False
 
                     # apply refining on every 'refine_on_every' files
                     self.refine_data('statement')
                     self.refine_data('function')
                     self.db.conn.execute("VACUUM")  # optimize the storage
                     print('Scanning the remaining files...\n')
+
+                    # total time elapsed
+                    time_elapsed = format_timespan(
+                        time.time() - ext.start_time)
+                    print("\n" + "="*50)
+                    print(f"Total time elapsed: {time_elapsed}")
+                    print("\n" + "="*50)
 
     def find_remaining_files(self, files: list) -> list:
         """incremental fetching of the remaining files."""
@@ -244,7 +251,7 @@ class Extractor:
                                     zipobj=zipobj
                                     )
             complete_stat = True
-        print(f'Status of prj: {complete_stat}')
+        # print(f'Status of prj: {complete_stat}')
         return complete_stat
 
     def iterate_projects(self):
@@ -253,57 +260,39 @@ class Extractor:
 
         df_prj_todo = df_prj[df_prj.status != 'Complete']
         project_links = df_prj_todo['project'].tolist()
+        ext_stat = False
 
         if len(project_links) > 0:
             print(f'Projects to be extracted: \n{tabulate(df_prj_todo)}')
-            for project in project_links:
+            try:
+                for project in project_links:
+                    self.project = project
+                    # extract the project directory/URL
+                    success_stat = self.project2db(project)
 
-                self.project = project
-                # extract the project directory/URL
-                success_stat = self.project2db(project)
-
-                if success_stat:
-                    # Change the project status to complete
-                    self.db.change_status(project, 'Complete')
-                else:
-                    print("Non-zipped project!")
-                # elif stat == 'Complete':
-                #     print("Project extraction is already complete!")
-                # else:
-                #     print("Project is not in the list!")
-                #     print('\n\n')
+                    if success_stat:
+                        # Change the project status to complete
+                        self.db.change_status(project, 'Complete')
+                        self.db.display_table(table='project')
+                    else:
+                        print("Non-zipped project!")
+                ext_stat = True
+            except Exception as ex:
+                print(f'[iterate_projects] Exception: {ex}')
         else:
-            return True
-            exit(0)
-
-        print('\n\n')
-        print("=" * 50)
-        print("All the given projects were extracted!")
-        print("=" * 50)
-        self.db.check_progress(project='all')
-        self.db.display_table(table='project')
-        return True
+            ext_stat = True
+        return ext_stat
 
     def run_extractor(self):
         """Add new projects to the database"""
         status_of_all = ext.iterate_projects()
 
-        if not status_of_all:
-            # Refine the data
-            start_time = time.time()
-            ext.refine_data('statement')
-            ext.refine_data('function')
-            time_elapsed = time.time() - start_time
-            print("Time elapsed for filtering: " +
-                  f"{format_timespan(time_elapsed)}")
-
-            # total time elapsed
-            time_elapsed = time.time() - ext.start_time
-            print("\n" + "="*50)
-            print(f"Total time elapsed: {format_timespan(time_elapsed)}")
-
+        if status_of_all:
+            print("=" * 50)
+            self.db.check_progress(project='all')
+            print('All projects were extracted!')
         else:
-            print('Projects were already extracted!')
+            print('Unable to extract the projects!')
 
         print("="*50)
         # final operations to the database
@@ -311,6 +300,13 @@ class Extractor:
         # print('Executing VACUUM...')
         self.db.conn.execute("VACUUM")  # optimize the storage
         self.db.cursor.close()
+
+        # total time elapsed
+        time_elapsed = time.time() - ext.start_time
+        print("\n" + "="*50)
+        print(f"Total time elapsed: {format_timespan(time_elapsed)}")
+        print("="*50)
+
         print('The database is saved at: ' +
               f'{self.config["save"]["database"]}')
         print("="*50)

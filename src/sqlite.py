@@ -139,7 +139,6 @@ class Database:
         try:
             query = "UPDATE project SET status ='" + \
                 status + "' WHERE project='" + project + "'"
-            print(f'query: {query}')
             self.cursor.execute(query)
             print('-'*50)
             print(f"Project status: {project} [{status}]\n")
