@@ -1,8 +1,8 @@
-# data_file: 'data/iDetect_refine/RF_Binary.csv'
-data_file: "data/contiki-master_Binary.csv"
+data_file: "data/iDetect_refine/DNN_Binary.csv"
+# data_file: "data/contiki-master_Binary.csv"
 result_dir: result/
 apply_balancer: False # True if you want to apply the classes' balancer
-train: False
+train: True
 test: True
 debug: True # mode: turn debugging mode True for preprocessing on debug_rows samples.
 
@@ -44,6 +44,5 @@ dnn:
   epsilon: 1e-08
   decay: 0.0
   verbose: 2 # display the running information of the trainig or hide, 2 means show the info
-  loss: sparse_categorical_crossentropy # iDetect has used 'sparse_categorical_crossentropy', 
+  loss: sparse_categorical_crossentropy # iDetect has used 'sparse_categorical_crossentropy',
   # categorical_crossentropy for multiclass or binary_crossentropy for binary classification.
-

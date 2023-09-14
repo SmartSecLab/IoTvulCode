@@ -264,21 +264,21 @@ class Extractor:
 
         if len(project_links) > 0:
             print(f'Projects to be extracted: \n{tabulate(df_prj_todo)}')
-            try:
-                for project in project_links:
-                    self.project = project
-                    # extract the project directory/URL
-                    success_stat = self.project2db(project)
+            # try:
+            for project in project_links:
+                self.project = project
+                # extract the project directory/URL
+                success_stat = self.project2db(project)
 
-                    if success_stat:
-                        # Change the project status to complete
-                        self.db.change_status(project, 'Complete')
-                        self.db.display_table(table='project')
-                    else:
-                        print("Non-zipped project!")
-                ext_stat = True
-            except Exception as ex:
-                print(f'[iterate_projects] Exception: {ex}')
+                if success_stat:
+                    # Change the project status to complete
+                    self.db.change_status(project, 'Complete')
+                    self.db.display_table(table='project')
+                else:
+                    print("Non-zipped project!")
+            ext_stat = True
+            # except Exception as ex:
+            #     print(f'[iterate_projects] Exception: {ex}')
         else:
             ext_stat = True
         return ext_stat

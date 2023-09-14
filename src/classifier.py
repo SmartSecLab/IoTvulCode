@@ -257,8 +257,8 @@ class Classifier:
 
                 # cls_report = classification_report(y_eval, y_pred)
                 # print(f"Classification Report: \n{cls_report}")
-                print('loss: ', loss)
-                print('acc: ', acc)
+                # print('loss: ', loss)
+                # print('acc: ', acc)
             else:
                 print(f"\n\nModel file: {model_file} not found!")
                 print("Please train the model first!")
