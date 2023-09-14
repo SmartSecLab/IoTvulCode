@@ -53,7 +53,7 @@ class FunsCollector:
             cwe = 'CWE-unknown'
         return str(cwe)
 
-    def is_fun_vul(self, fun, vul_statement):
+    def label_function(self, fun, vul_statement):
         """check if the vulnerability content/statement appears 
         in the function block or not."""
         vul_bool = False
@@ -77,7 +77,6 @@ class FunsCollector:
             flaw_records = list(
                 dict(enumerate(zip(lines, cwes, context, tool))).values())
             # print(f'Flaw_records_size: {len(flaw_records)}')
-            count = 0
 
             if nall_funs > 200 and len(flaw_records) > 1000:
                 random.seed(20)
@@ -85,16 +84,13 @@ class FunsCollector:
                 # print(f'Len of funs: {len(all_funs)}')
 
             for fun, record in itertools.product(all_funs, flaw_records):
-                count = count+1
-                # print(f'Scanning [{count} of {len(all_funs)}]...')
 
                 line, cwe, vul_statement, _ = record
-
                 row = {
                     'file': source_file,
                     'code': fun
                 }
-                if self.is_fun_vul(fun, vul_statement):
+                if self.label_function(fun, vul_statement):
                     row['context'] = vul_statement
                     row['cwe'] = self.extract_cwe(cwe)
                 else:

@@ -362,8 +362,6 @@ class Analyzers:
                 df_merged['msg'] = '-'
             if 'column' not in list(df_merged.columns):
                 df_merged['column'] = '-'
-            if 'context' not in list(df_merged.columns):
-                df_merged['context'] = '-'
             if 'helpuri' not in list(df_merged.columns):
                 df_merged['helpuri'] = '-'
             if 'defaultlevel' not in list(df_merged.columns):
@@ -376,6 +374,9 @@ class Analyzers:
                 df_merged['name'] = '-'
             if 'type' not in list(df_merged.columns):
                 df_merged['type'] = '-'
+
+            if 'context' not in list(df_merged.columns):
+                df_merged['context'] = '-'
 
             # ===============REMOVE===================
             # REMOVE columns if present in the merged dataframe.
@@ -391,7 +392,7 @@ class Analyzers:
 
             # '-' for empty cells
             df_merged = df_merged.fillna("-")
-
+            df_merged['context'] = df_merged.context.str.strip()
             df_merged = df_merged[self.consider_cols]
         return df_merged
 
