@@ -157,7 +157,8 @@ class Utility():
     def filter_results(self, df: pd.DataFrame()) -> pd.DataFrame():
         '''filter duplicates based on given columns'''
         print("-" * 50)
-        check_cols = ['code', 'context', 'cwe', 'text']
+        check_cols = ['code', 'context', 'cwe']
+
         # table-wise columns to check duplicates
         check_cols = [x for x in df.columns if x in check_cols]
         # Step 1: drop duplicates from all rows
@@ -194,7 +195,7 @@ if __name__ == "__main__":
     binary_file = config["save"]["statement"].rsplit('.')[0] + '_Binary.csv'
     override = config["save"]["override"]
 
-    if override == False:
+    if override is False:
         if os.path.exists(stat) or os.path.exists(fun):
             print(f"The statement/function dataset"
                   + "you want to create already exist: "

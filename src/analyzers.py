@@ -249,7 +249,7 @@ class Analyzers:
                 data = json.load(f)
             df = pd.DataFrame(data)
         except Exception as exc:
-            print(f"json2df error: opening at:{file}")
+            print(f"json2df error [{exc}]: opening at:{file}")
         return df
 
     # TODO: implementation of infer tool

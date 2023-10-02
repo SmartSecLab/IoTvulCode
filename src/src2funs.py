@@ -1,21 +1,35 @@
+# -*- coding: utf-8 -*-
+"""
+grepping function from the given file of the code.
+"""
 import ctypes
 import difflib
+import itertools
 import os
+import random
 import stat
 import subprocess
+import subprocess as sub
 import sys
-from io import StringIO
+import tempfile
+import time
+import xml.etree.ElementTree as et
+from io import BytesIO, StringIO
+from pathlib import Path
+from zipfile import ZipFile
 
+import lizard
 import pandas as pd
+import requests
+import tqdm
+import yaml
+from humanfriendly import format_timespan
 from lxml import etree
 from pylibsrcml import srcml
 
 
-class Src2Funs:
+class FunsCollector:
     """Extract functions from source code"""
-
-    # def __init__(self, src):
-    #     self.src = src
 
     def src2xml(self, src):
         """generate srcML tree from the given source file or directory"""
@@ -86,14 +100,94 @@ class Src2Funs:
         #     print(f'Error on src2src_function code: {err}')
         #     return []
 
+    def extract_cwe(self, cwe) -> str:
+        """ Extract CWE type information,
+        In case of Rats tool's 'CWE-unknown' list, make it just a single item."""
+        cwe = list(set(cwe)) if isinstance(cwe, list) else cwe
+
+        if len(cwe) > 0 and isinstance(cwe, list):
+            if len(cwe) > 1 and 'CWE-unknown' in cwe:
+                # remove 'CWE-unknown' if the sample is already labeled as a known vulnerability.
+                cwe.remove('CWE-unknown')
+
+            if len(cwe) == 1:
+                cwe = cwe[0]
+        else:
+            cwe = 'CWE-unknown'
+        return str(cwe)
+
+    def label_function(self, fun, vul_statement):
+        """check if the vulnerability content/statement appears 
+        in the function block or not."""
+        vul_bool = False
+        if len(vul_statement) > 1:
+            if ''.join(vul_statement.split()) in ''.join(fun.split()):
+                vul_bool = True
+        return vul_bool
+
+    def extract_functions(self, source_file, lines, cwes, context, tool=['cppcheck']):
+        """split the given file into a list of function blocks 
+        and return their metrics into a dataframe."""
+        df = pd.DataFrame()
+        all_funs = self.src2src_functions(src=source_file)
+        nall_funs = len(all_funs)
+
+        if nall_funs > 0:
+            # most expensive steps below
+            # for big file, we take only 500 functions,
+            # otherwise it may introduce quadradic complexity
+
+            flaw_records = list(
+                dict(enumerate(zip(lines, cwes, context, tool))).values())
+            # print(f'Flaw_records_size: {len(flaw_records)}')
+
+            if nall_funs > 200 and len(flaw_records) > 1000:
+                random.seed(20)
+                all_funs = random.sample(all_funs, 10)
+                # print(f'Len of funs: {len(all_funs)}')
+
+            for fun, record in itertools.product(all_funs, flaw_records):
+
+                line, cwe, vul_statement, _ = record
+                row = {
+                    'file': source_file,
+                    'code': fun
+                }
+                if self.label_function(fun, vul_statement):
+                    row['context'] = vul_statement
+                    row['cwe'] = self.extract_cwe(cwe)
+                else:
+                    row['context'] = ''
+                    row['cwe'] = 'Benign'
+
+                df = pd.concat(
+                    [df, pd.DataFrame([row])], ignore_index=True)
+
+            if len(df) > 0:
+                df = df.drop_duplicates().reset_index(drop=True)
+        return df
+
+    def polulate_function_table(self, file, df_flaw):
+        """populate the function table"""
+        df_fun = pd.DataFrame()
+        try:
+            if len(df_flaw) > 0:
+                df_fun = self.extract_functions(
+                    source_file=file,
+                    lines=list(df_flaw.line),
+                    cwes=list(df_flaw.cwe),
+                    context=list(df_flaw.context),
+                    tool=list(df_flaw.tool),
+                )
+        except Exception as err:
+            print(f"Error while populating function table: {err} at {file}")
+        return df_fun
+
 
 if __name__ == "__main__":
     src = 'data/projects/contiki-2.4/apps/ftp/ftpc.c'
-    src2funs = Src2Funs()
-    all_functions = src2funs.src2src_functions(src)
-    # print(functions)
-    # src2funs.write_functions_file(
-    #     'functions.txt', functions)
+    funcollector = FunsCollector()
+    all_functions = funcollector.src2src_functions(src)
 
     context = "c->dataconn.conntype = CONNTYPE_FILE;"
     vul_functions = [line for line in all_functions if context in line]
