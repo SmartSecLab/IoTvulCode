@@ -154,20 +154,63 @@ class Utility():
     #     print("-" * 50 + "\n")
     #     return df
 
+    # def filter_results(self, df: pd.DataFrame()) -> pd.DataFrame():
+    #     '''filter duplicates based on given columns'''
+    #     print("-" * 50)
+    #     check_cols = ['code', 'context', 'cwe']
+
+    #     # table-wise columns to check duplicates
+    #     check_cols = [x for x in df.columns if x in check_cols]
+    #     # Step 1: drop duplicates from all rows
+    #     len_s0 = len(df)
+    #     df = df.drop_duplicates(
+    #         subset=check_cols, keep='first').reset_index(drop=True)
+    #     print(f"#[{len_s0-len(df)} out of {len_s0}] "
+    #           + "duplicates were dropped!")
+    #     print(f'cwe_values: {df.cwe.value_counts()}')
+    #     return df
+
+    def filter_benign(self, code_dup, cwe):
+        """ masking to filter duplicates and benign 
+        keeping vulnerable samples as it is.
+        """
+        if code_dup is True and cwe == 'Benign':
+            return True
+        else:
+            return False
+
     def filter_results(self, df: pd.DataFrame()) -> pd.DataFrame():
-        '''filter duplicates based on given columns'''
-        print("-" * 50)
-        check_cols = ['code', 'context', 'cwe']
+        """ apply filtering to remove duplicates and ambiquious samples
+        """
+        print('='*40)
+        print('Removing duplicates and ambiquious samples...')
+        print('-'*40)
 
         # table-wise columns to check duplicates
-        check_cols = [x for x in df.columns if x in check_cols]
-        # Step 1: drop duplicates from all rows
-        len_s0 = len(df)
+        code_col = 'code' if 'code' in df.columns else 'context'
+
+        df = df.sort_values(by=[code_col, 'cwe'], ascending=False)
+        original_size = len(df)
+        print(f'Original data size before filtering: {len(df)}')
+
+        # step1: remove duplicates checking [code_col, 'cwe']
         df = df.drop_duplicates(
-            subset=check_cols, keep='first').reset_index(drop=True)
-        print(f"#[{len_s0-len(df)} out of {len_s0}] "
-              + "duplicates were dropped!")
-        print(f'cwe_values: {df.cwe.value_counts()}')
+            subset=[code_col, 'cwe']).reset_index(drop=True)
+        step1_size = len(df)
+        print(f"Step1-filtering on [code and cwe]: {len(df)}" +
+              f" [filtered {original_size-step1_size}]")
+
+        # step2: remove duplicates checking [code_col]
+        df['code_dup'] = df[code_col].duplicated()
+        # df = df[~df['code_dup']] # this removes vul samples as well
+        df['filter_mask'] = df.apply(
+            lambda row: self.filter_benign(row.code_dup, row.cwe), axis=1)
+        df = df[~df['filter_mask']].reset_index(drop=True)
+        df = df.drop(labels=['code_dup', 'filter_mask'], axis=1)
+        step2_size = len(df)
+        print(f"Step2-filtering on [code] with vuls: {len(df)}" +
+              f" [filtered {step1_size-step2_size}]")
+        print('='*40)
         return df
 
     def show_info_pd(self, df: pd.DataFrame, name: str):

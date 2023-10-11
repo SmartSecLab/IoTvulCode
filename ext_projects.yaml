@@ -24,7 +24,7 @@ data/projects/contiki-2.4/apps/shell/,
 # /Users/guru/research/projects/FreeRTOS,
 # /Users/guru/research/projects/micropython,
 # /Users/guru/research/projects/openwrt,
-# /Users/guru/research/projects/RIOT,
+# /Users/guru/research/projects/RIOT
 # /Users/guru/research/projects/tinyos,
 ]
 save:

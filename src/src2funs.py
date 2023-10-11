@@ -18,7 +18,7 @@ from io import BytesIO, StringIO
 from pathlib import Path
 from zipfile import ZipFile
 
-import lizard
+# import lizard
 import pandas as pd
 import requests
 import tqdm
