@@ -1,6 +1,5 @@
 # config file for data extraction from different IoT projects:
 projects: [
-
 # data/projects/contiki-2.4/tools,
 # "data/projects/contiki-2.4/apps",
 # "https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download",
@@ -12,24 +11,29 @@ projects: [
 # "/Users/guru/research/contiki-master/",
 # data/projects/contiki-2.4/cpu/cc2430/,
 # /Users/guru/research/projects/gnucobol-3.2/libcob,
-/Users/guru/research/projects/gnucobol-3.2/lib/,
-data/projects/contiki-2.4/apps/shell/,
+# /Users/guru/research/projects/gnucobol-3.2/lib/,
+# data/projects/contiki-2.4/apps/shell/,
 # /Users/guru/research/projects/FreeRTOS/FreeRTOS-Plus/ThirdParty/wolfSSL/tests,
 # /Users/guru/research/projects/ARMmbed/targets/TARGET_STM/TARGET_STM32H7/TARGET_STM32H747xI/TARGET_PORTENTA_H7/COMPONENT_WHD/resources/firmware/COMPONENT_4343W_FS/,
+# data/projects/contiki-2.4/core/net/rime/rudolph1.h, # error
+# data/projects/contiki-2.4/core/net/rime, # error
+# /Users/guru/research/projects//linux-rpi/kernel/time,
+# /Users/guru/research/projects/contiki/platform/sky/dev/,
+# /Users/guru/research/projects/contiki/core/,
 #
-# /Users/guru/research/projects/gnucobol-3.2,
-# "data/projects/contiki-2.4",
-# "data/projects/linux-rpi-6.1.y",
-# /Users/guru/research/projects/ARMmbed,
-# /Users/guru/research/projects/FreeRTOS,
-# /Users/guru/research/projects/micropython,
-# /Users/guru/research/projects/openwrt,
-# /Users/guru/research/projects/RIOT
-# /Users/guru/research/projects/tinyos,
+/Users/guru/research/projects/gnucobol,
+/Users/guru/research/projects//contiki,
+/Users/guru/research/projects//linux-rpi,
+/Users/guru/research/projects/ARMmbed,
+/Users/guru/research/projects/FreeRTOS,
+/Users/guru/research/projects/micropython,
+/Users/guru/research/projects/openwrt,
+/Users/guru/research/projects/RIOT,
+/Users/guru/research/projects/tinyos,
 ]
 save:
-  database: data/IoT.db
-  # database: /Users/guru/research/TinyVul.db
+  # database: data/IoT.db
+  database: /Users/guru/research/TinyVul-v2.db
   override: True
   # override the existing files3
   threshold_lines: 5
