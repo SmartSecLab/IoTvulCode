@@ -85,13 +85,14 @@ class Analyzers:
     ############################## Applying CppCheck tool ##############################
 
     def get_statement(self, file, line):
-        with open(file) as fp:
-            lines = fp.readlines()
-            if line < len(lines):
-                statement = lines[line]
-            else:
-                # No statement found!
-                statement = ""
+        statement = ""
+        try:
+            with open(file, encoding='latin-1') as fp:
+                lines = fp.readlines()
+                if line < len(lines):
+                    statement = lines[line]
+        except Exception as exc:
+            print(f"Encoding Error: {exc}")
         return statement
 
     def fetch_location(self, flaw: et.Element) -> dict:

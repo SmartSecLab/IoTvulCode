@@ -18,7 +18,7 @@ from io import BytesIO, StringIO
 from pathlib import Path
 from zipfile import ZipFile
 
-# import lizard
+import lizard
 import pandas as pd
 import requests
 import tqdm
@@ -100,20 +100,16 @@ class FunsCollector:
         #     print(f'Error on src2src_function code: {err}')
         #     return []
 
-    def extract_cwe(self, cwe) -> str:
+    def fix_cwe_labeling(self, cwe) -> str:
         """ Extract CWE type information,
-        In case of Rats tool's 'CWE-unknown' list, make it just a single item."""
-        cwe = list(set(cwe)) if isinstance(cwe, list) else cwe
+        In case of Rats tool's 'CWE-unknown' list, 
+        make it just a single item."""
+        cwe = list(set(cwe)) if isinstance(cwe, list) else [cwe]
 
-        if len(cwe) > 0 and isinstance(cwe, list):
-            if len(cwe) > 1 and 'CWE-unknown' in cwe:
-                # remove 'CWE-unknown' if the sample is already labeled as a known vulnerability.
+        if len(cwe) > 1:
+            if 'CWE-unknown' in cwe:
+                # remove 'CWE-unknown' if already labeled as a known vul.
                 cwe.remove('CWE-unknown')
-
-            if len(cwe) == 1:
-                cwe = cwe[0]
-        else:
-            cwe = 'CWE-unknown'
         return str(cwe)
 
     def label_function(self, fun, vul_statement):
@@ -155,7 +151,7 @@ class FunsCollector:
                 }
                 if self.label_function(fun, vul_statement):
                     row['context'] = vul_statement
-                    row['cwe'] = self.extract_cwe(cwe)
+                    row['cwe'] = self.fix_cwe_labeling(cwe)
                 else:
                     row['context'] = ''
                     row['cwe'] = 'Benign'

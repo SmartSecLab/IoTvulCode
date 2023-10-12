@@ -27,6 +27,7 @@ from zipfile import ZipFile
 
 import pandas as pd
 import requests
+import yaml
 from pandas import json_normalize
 
 # from extract_cwe_record import add_cwe_class,  extract_cwe
@@ -200,5 +201,32 @@ def import_cves():
     print("-" * 70)
 
 
+def check_project_in_cve(df, prj):
+    """Check if a project is in CVE."""
+    prj = prj.split('/')[-1]
+    if len(df[df.description.str.lower().str.contains(prj.lower())]) > 0:
+        print(f'Project [{prj}] is in CVE list.')
+    else:
+        print(f'Project [{prj}] is not in CVE list.')
+
+
+def run_checking():
+    with open("ext_projects.yaml") as fp:
+        config = yaml.safe_load(fp)
+        print(f'List of projects: \n{config["projects"]}\n')
+
+        df = pd.read_csv(cve_file)
+        print('CVE records have been loaded.')
+
+        for prj in config["projects"]:
+            check_project_in_cve(df, prj)
+
+
 if __name__ == "__main__":
-    import_cves()
+    cve_file = Path(DATA_PATH) / "cve-records.csv"
+
+    # crawl cve_records if not exists
+    if cve_file.is_file() is False:
+        import_cves()
+
+    run_checking()
