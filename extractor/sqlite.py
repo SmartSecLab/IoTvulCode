@@ -6,7 +6,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 from tabulate import tabulate
-from src.utility import Utility
+from extractor.utility import Utility
 
 
 class Database:
@@ -86,7 +86,7 @@ class Database:
         """ creates a table for the projects to track their status """
         df = pd.DataFrame()
         try:
-            config = yaml.safe_load(open("ext_projects.yaml"))
+            config = yaml.safe_load(open("config/extractor.yaml"))
             projects = config["projects"]
 
             if self.table_exists('project') is False:

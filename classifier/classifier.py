@@ -30,10 +30,10 @@ from dvclive.keras import DVCLiveCallback
 from sklearn.metrics import classification_report
 
 # custom modules
-from src.models import ModelArchs
-from src.plot import Plotter
-from src.preprocess import Preprocessor
-from src.utility import Utility
+from classifier.models import ModelArchs
+from classifier.plot import Plotter
+from classifier.preprocess import Preprocessor
+from classifier.utility import Utility
 
 
 class Classifier:
@@ -46,7 +46,7 @@ class Classifier:
 
     def __init__(self):
         self.util = Utility()
-        self.config = self.util.load_config("config.yaml")
+        self.config = self.util.load_config("config/classifier.yaml")
         self.model = None
         self.history = None
 

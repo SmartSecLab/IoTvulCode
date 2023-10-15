@@ -21,10 +21,6 @@ class Utility():
     This class does several supporting utility functions
     """
 
-    # def __init__(self):
-    #     # self.config = {}
-    #     pass
-
     def load_config(self, yaml_file):
         """Load the yaml file and return a dictionary
         """

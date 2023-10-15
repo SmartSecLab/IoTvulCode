@@ -25,7 +25,7 @@ import yaml
 from pylibsrcml import srcml
 from tabulate import tabulate
 
-from src.utility import Utility
+from extractor.utility import Utility
 
 
 class Analyzers:

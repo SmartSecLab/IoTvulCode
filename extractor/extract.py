@@ -18,10 +18,10 @@ from humanfriendly import format_timespan
 from tabulate import tabulate
 
 # User defined modules
-from src.analyzers import Analyzers
-from src.src2funs import FunsCollector
-from src.sqlite import Database
-from src.utility import Utility
+from extractor.analyzers import Analyzers
+from extractor.src2funs import FunsCollector
+from extractor.sqlite import Database
+from extractor.utility import Utility
 
 
 def handle_timeout(signum, frame):
@@ -37,7 +37,7 @@ class Extractor:
     def __init__(self):
         self.util = Utility()
         self.funcol = FunsCollector()
-        self.config_file = "ext_projects.yaml"
+        self.config_file = "config/extractor.yaml"
         self.config = self.util.load_config(self.config_file)
 
         self.sect = Analyzers(self.config)
