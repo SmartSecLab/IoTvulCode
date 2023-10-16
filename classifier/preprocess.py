@@ -12,7 +12,9 @@ Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smar
 
 import json
 import os
+from pathlib import Path
 from string import printable
+import pickle
 
 import numpy as np
 import pandas as pd
@@ -59,7 +61,7 @@ class Preprocessor():
         # Pad the sequences (left padded with zeros)
         # to the max length of the code snippet
         X = pad_sequences(code_snippet_int_tokens, maxlen=max_len)
-        target = np.array(df.isMalicious)
+        target = np.array(df.label)
         print(f"Matrix dimensions of X: {X.shape},\
                 \nVector dimension of y:{target.shape}")
         return X, target
