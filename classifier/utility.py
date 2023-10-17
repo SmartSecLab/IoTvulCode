@@ -30,3 +30,12 @@ class Utility():
                 return yaml.safe_load(stream)
             except yaml.YAMLError as err:
                 return err
+
+    # function to keep logging of the verbose and save log line to a file
+    def log(self, log_file, log_line, verbose):
+        """Log the verbose to a file
+        """
+        if verbose:
+            print(log_line)
+        with open(log_file, 'a') as f:
+            f.write(log_line + '\n')

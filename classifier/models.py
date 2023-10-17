@@ -12,15 +12,18 @@ Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smar
 
 import json
 import os
+import pickle
 import re
 import warnings
 from pathlib import Path
 from string import printable
 
+import joblib
 # import keras
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import skops.io as sio
 import tensorflow as tf
 from matplotlib import pyplot
 from nltk.tokenize.regexp import WhitespaceTokenizer
@@ -263,11 +266,8 @@ class ModelArchs:
         model = self.optimize_model(self, model)
         return model
 
-    def apply_RF(self, df):
+    def apply_RF(self, code_col):
         """Defining the Training Model Classifier for Binary Classification"""
-
-        code_col = df.code
-
         def preprocess4RF(code_col):
             """Cleaning-up"""
             return (
@@ -275,19 +275,11 @@ class ModelArchs:
                 .replace(r"\b([A-Za-z])\1+\b", "", regex=True)
                 .replace(r"\b[A-Za-z]\b", "", regex=True)
             )
-
         transformer = FunctionTransformer(preprocess4RF)
+
         token_pattern = r"""([A-Za-z_]\w*\b|[!\#\$%\&\*\+:\-\./<=>\?@\\\^_\|\~]+|[ \t\(\),;\{\}\[\]"'`])"""
         vectorizer = TfidfVectorizer(
             token_pattern=token_pattern, max_features=3000)
-
-        # Dataset split for training and testing.
-        code_train, code_test, tag_train, tag_test = train_test_split(
-            df.code,
-            df.isMalicious,
-            test_size=0.15,
-            shuffle=True,  # TODO apply random_state instead shuffle=True for reproducibility
-        )
 
         # Training Model Classifier for Multi-Class Classification
         clf = RandomForestClassifier(n_jobs=4)
@@ -305,9 +297,4 @@ class ModelArchs:
             "clf__n_estimators": 300,
         }
         model.set_params(**best_params)
-
-        # Fitting
-        model.fit(code_train, tag_train)
-        acc = model.score(code_test, tag_test)
-        print(f"Accuracy: {acc}")
         return model

@@ -1,11 +1,13 @@
 # data_file: "data/iDetect_refine/DNN_Binary.csv"
-data_file: data/TinyVul-v2-function-binary.csv
+data_file: data/TinyVul-v2-statement-binary.csv
+eval_data: data/iDetect_refine/RF_Binary.csv
 # data_file: "data/contiki-master_Binary.csv"
 result_dir: result/
 apply_balancer: False # True if you want to apply the classes' balancer
-train: True
+train: False
 test: True
 debug: True # mode: turn debugging mode True for preprocessing on debug_rows samples.
+debug_rows: 400
 
 preprocess:
   raw_dir: data/local
@@ -18,7 +20,7 @@ preprocess:
 model: # settings for training and testing experiments
   seed: 30 # seed for reproduciability to generate same set of samples of data splits
   type: binary # binary or multiclass
-  name: RNN # RNN, CNN or RF - RandomForest
+  name: RNN # RNN, LSTM, CNN or RF - RandomForest
   k-fold: 20 # number of cross-validation folds
   split_ratio: 0.30 # ratio of training and testing ratio
   path: result/

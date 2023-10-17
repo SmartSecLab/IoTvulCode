@@ -1,4 +1,4 @@
-code,isMalicious
+code,label
  ( strlen ( me ) ,1
  *pBuffer = MQTT_PACKET_TYPE_CONNECT ; pBuffer++ ;,1
  *pBuffer1 = MQTT_PACKET_TYPE_CONNECT1 ; pBuffer++ ;,1

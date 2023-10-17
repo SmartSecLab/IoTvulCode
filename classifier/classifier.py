@@ -15,6 +15,8 @@ import warnings
 from argparse import ArgumentParser
 from configparser import ConfigParser
 from pathlib import Path
+from datetime import datetime
+from sklearn import model_selection
 
 # from string import printable
 import pandas as pd
@@ -43,17 +45,22 @@ class Classifier:
         self.config = self.util.load_config("config/classifier.yaml")
         self.model = None
         self.history = None
+        self.arch = ModelArchs(self.config)
 
     def update_config_args(self, paras):
         """create model dir to store it
          set the config args from the command line if provided """
         self.config["model"]["name"] = paras.model if paras.model else self.config["model"]["name"]
         self.config["data_file"] = paras.data if paras.data else self.config["data_file"]
+
         if self.config['debug']:
             self.config['dnn']['epochs'] = self.config['dnn']['debug_epochs']
+            time_now = ''
+        else:
+            time_now = datetime.now().strftime('%Y-%m-%d_%H.%Mm')
 
         mdir = self.config["model"]["name"] + "-" + str(self.config["dnn"]["epochs"]) + \
-            "-" + Path(self.config["data_file"]).stem + "/"
+            "-" + Path(self.config["data_file"]).stem + "-" + time_now + "/"
 
         self.config["model"]["path"] = self.config["model"]["path"] + mdir
 
@@ -120,7 +127,7 @@ class Classifier:
 
     def select_model_arch(self):
         """Choose ML model"""
-        arch = ModelArchs(self.config)
+
         model_name = self.config["model"]["name"]
 
         print("\n\n" + "=" * 25 + " " + model_name +
@@ -129,15 +136,15 @@ class Classifier:
         print("-" * 50)
 
         if model_name == "RNN":
-            model = arch.apply_RNN()
+            model = self.arch.apply_RNN()
         elif model_name == "CNN":
-            model = arch.apply_CNN()
+            model = self.arch.apply_CNN()
         elif model_name == "LSTM":
-            model = arch.apply_LSTM()
+            model = self.arch.apply_LSTM()
         elif model_name == "RF":
-            model = arch.apply_RF(df)
+            model = self.arch.apply_RF(df)
         elif model_name == "multiDNN":
-            model = arch.apply_multiDNN()
+            model = self.arch.apply_multiDNN()
         else:
             print("Invalid model! Please select a valid model!")
             exit(1)
@@ -148,18 +155,18 @@ class Classifier:
         model_name = self.config["model"]["name"]
         epochs = self.config["dnn"]["epochs"]
 
-        # Select the model architecture
-        model = self.select_model_arch()
-
-        # store metadata to neptune.ai
-        if self.config["model"]["use_neptune"]:
-            from neptune.integrations.tensorflow_keras import NeptuneCallback
-            nt_run = self.init_neptune(
-                model_name, epochs, self.config["data_file"])
-
         # Apply callbacks for training to store the best model checkpoint
         # and apply early stopping.
         if model_name != "RF":
+            # Select the model architecture
+            model = self.select_model_arch()
+
+            # store metadata to neptune.ai
+            if self.config["model"]["use_neptune"]:
+                from neptune.integrations.tensorflow_keras import NeptuneCallback
+                nt_run = self.init_neptune(
+                    model_name, epochs, self.config["data_file"])
+
             tf_callbacks = self.apply_checkpoints(
                 model=model,
                 cp_path=self.config["model"]["path"],
@@ -196,17 +203,14 @@ class Classifier:
         else:
             # TODO: log non-DNN models output to Neptune
             # nt_run["acc"] = ?? or params=dict
+            # Fitting
+            model = self.arch.apply_RF(df.code)
+            # model = self.select_model_arch()
+            model.fit(X_train, y_train)
+            acc = model.score(X_test, y_test)
+            print(f"Accuracy: {acc}")
             print(f"Trained with non-DNN model: {model_name}")
         return model
-
-    # def load_model(self, model_JSON, file_weights):
-    #     """Load model from disk"""
-    #     with open(model_JSON, "r") as f:
-    #         model_json = json.load(f)
-    #         model = model_from_json(model_json)
-
-    #     model.load_weights(file_weights)
-    #     return model
 
     def load_tf_model(self, model_file):
         """ 
@@ -230,12 +234,11 @@ class Classifier:
         if self.config["model"]["name"] != "RF":
             if Path(model_file).is_file():
                 model = self.load_tf_model(model_file)
-
-                # evaluate the model
-                # loss, acc = model.evaluate(X_eval, y_eval, verbose=0)
-
                 print("\nEvaluating the model...\n")
-                y_pred = model.predict(X_eval)
+                # evaluate the model
+                loss, acc = model.evaluate(X_eval, y_eval, verbose=1)
+
+                # y_pred = model.predict(X_eval)
                 # print(f'y_pred: {y_pred}')
                 # print(f'y_eval: {y_eval}')
                 # print(f'\ny_pred.shape: {y_pred.shape}')
@@ -251,14 +254,13 @@ class Classifier:
 
                 # cls_report = classification_report(y_eval, y_pred)
                 # print(f"Classification Report: \n{cls_report}")
-                # print('loss: ', loss)
-                # print('acc: ', acc)
+                print('loss: ', loss)
+                print('acc: ', acc)
             else:
                 print(f"\n\nModel file: {model_file} not found!")
                 print("Please train the model first!")
         else:
-            train_model = pickle.load(open(model_file, "RF"))
-            result = train_model.score(X_eval, y_eval)
+            result = model_file.score(X_eval, y_eval)
             print("Result: ", result)
         print("\n" + "-" * 35 + "Testing Completed" + "-" * 35 + "\n")
 
@@ -298,6 +300,13 @@ if __name__ == "__main__":
         preprocess.save_model(model, model_file)
 
     # TODO: Evaluation of the trained model
+    df_eval = preprocess.load_data(data_file=config["eval_data"])
+
     if config["test"]:
-        output_size = len(set(list(y_train)))
-        classfr.evaluate_model(model_file, X_test, y_test)
+        if config["model"]["name"] != "RF":
+            X_eval, y_eval = preprocess.tokenize_data(
+                df=df_eval, max_len=config["preprocess"]["max_len"])
+            # output_size = len(set(list(y_train)))
+            classfr.evaluate_model(model_file, X_eval, y_eval)
+        else:
+            classfr.evaluate_model(model, X_eval, y_eval)

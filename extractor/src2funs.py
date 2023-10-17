@@ -103,7 +103,8 @@ class FunsCollector:
     def fix_cwe_labeling(self, cwe) -> str:
         """ Extract CWE type information,
         In case of Rats tool's 'CWE-unknown' list, 
-        make it just a single item."""
+        make it just a single item.
+        """
         cwe = list(set(cwe)) if isinstance(cwe, list) else [cwe]
 
         if len(cwe) > 1:

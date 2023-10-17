@@ -15,6 +15,8 @@ import os
 from pathlib import Path
 from string import printable
 import pickle
+import _pickle as cPickle
+import skops.io as sio
 
 import numpy as np
 import pandas as pd
@@ -40,13 +42,19 @@ class Preprocessor():
 
     def load_data(self, data_file):
         """Load data code snippets"""
-        df = pd.read_csv(
-            data_file, encoding="utf-8")  # og: encoding="unicode_escape"
+        # og: encoding="unicode_escape"
+        if self.config['debug'] is True:
+            df = pd.read_csv(data_file,
+                             encoding="utf-8",
+                             nrows=int(self.config['debug_rows'])
+                             )
+        else:
+            df = pd.read_csv(data_file, encoding='utf-8')
 
         # Checking for duplicate rows or null values
         df = df.dropna().drop_duplicates().reset_index(drop=True)
         print(f"\nShape of the input data: {df.shape}")
-        print("Samples:")
+        print("\nSamples:")
         print("-" * 50)
         print(df.head(3))
         print("-" * 50)
@@ -68,7 +76,10 @@ class Preprocessor():
 
     def split_data(self, df):
         """Split data into train and test sets"""
-        X, y = self.tokenize_data(df, self.config["preprocess"]["max_len"])
+        if self.config['model']['name'] != 'RF':
+            X, y = self.tokenize_data(df, self.config["preprocess"]["max_len"])
+        else:
+            X, y = df.code, df.label
 
         X_train, X_test, y_train, y_test = model_selection.train_test_split(
             X, y,
@@ -99,7 +110,7 @@ class Preprocessor():
             if self.config["model"]["name"] != "RF":
                 model.save(model_file)
             else:
-                pickle.dump(model, open(model_file, "wb"))
+                sio.dumps(model_file)
 
         print(f"The final trained model is saved at: {model_file}")
         print("\n" + "-" * 35 + "Training Completed" + "-" * 35 + "\n")
