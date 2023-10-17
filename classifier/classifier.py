@@ -280,6 +280,10 @@ if __name__ == "__main__":
     paras = classfr.parse_args()
     config = classfr.config
 
+    if config["model"]["name"] == "RF":
+        assert config['train'] is True, \
+            'The model should be trained first for non-DNN models!'
+
     # update config args
     config = classfr.update_config_args(paras=paras)
     model_file = config["model"]["path"] + "model-final.h5"
@@ -309,4 +313,5 @@ if __name__ == "__main__":
             # output_size = len(set(list(y_train)))
             classfr.evaluate_model(model_file, X_eval, y_eval)
         else:
+            X_eval, y_eval = df_eval.code, df_eval.label
             classfr.evaluate_model(model, X_eval, y_eval)
