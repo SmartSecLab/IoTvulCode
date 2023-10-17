@@ -1,5 +1,5 @@
 # data_file: "data/iDetect_refine/DNN_Binary.csv"
-data_file: data/TinyVul-v2-statement-binary.csv
+data_file: data/TinyVul-v2-function-binary.csv
 # data_file: "data/contiki-master_Binary.csv"
 result_dir: result/
 apply_balancer: False # True if you want to apply the classes' balancer
