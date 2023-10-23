@@ -40,16 +40,18 @@ def convert_multi2binary(df):
 def save_csvs_from_TinyVul(df_fun, df_stat, db_name):
     """ save the data to csv files """
     # Save multiclass CSVs
+    print('Saving datasets...')
     df_fun = correct_multi_label(df_fun)
     df_stat = correct_multi_label(df_stat)
-    df_fun.to_csv(f"../data/{db_name}-function-multiclass.csv", index=False)
-    df_stat.to_csv(f"../data/{db_name}-statement-multiclass.csv", index=False)
+    df_fun.to_csv(f"data/{db_name}-function-multiclass.csv", index=False)
+    df_stat.to_csv(f"data/{db_name}-statement-multiclass.csv", index=False)
 
     # Save binary CSVs
     df_fun = convert_multi2binary(df_fun)
     df_stat = convert_multi2binary(df_stat)
-    df_fun.to_csv(f"../data/{db_name}-function-binary.csv", index=False)
-    df_stat.to_csv(f"../data/{db_name}-statement-binary.csv", index=False)
+    df_fun.to_csv(f"data/{db_name}-function-binary.csv", index=False)
+    df_stat.to_csv(f"data/{db_name}-statement-binary.csv", index=False)
+    print(f'Saved at: data/{db_name}-<name>.csv')
 
 
 database = '/Users/guru/research/TinyVul-v2.db'
@@ -59,7 +61,7 @@ db_name = Path(database).name.replace('.db', '')
 save_csvs_from_TinyVul(df_fun, df_stat, db_name=db_name)
 
 # Save project details into a CSV file (optional)
-df_prj.to_csv(f"../data/{db_name}-project.csv", index=False)
+df_prj.to_csv(f"data/{db_name}-project.csv", index=False)
 
 
 # # Change drop_dup variable in configuration file:
