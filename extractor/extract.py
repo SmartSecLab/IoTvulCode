@@ -170,6 +170,9 @@ class Extractor:
                 if len(df_flaw) > 0:
                     df_flaw.loc[df_flaw.astype(
                         str).drop_duplicates().index].reset_index(drop=True)
+                    # filter comment statements
+                    df_flaw = df_flaw[df_flaw.context.str.contains(
+                        ';')].reset_index(drop=True)
 
                 self.save_file_data(df_flaw, df_fun)
 
@@ -190,7 +193,7 @@ class Extractor:
 
                     # total time elapsed
                     time_elapsed = format_timespan(
-                        time.time() - ext.start_time)
+                        time.time() - self.start_time)
                     print("\n" + "="*50)
                     print(f"Total time elapsed: {time_elapsed}")
                     print("\n" + "="*50)
