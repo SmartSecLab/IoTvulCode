@@ -17,12 +17,15 @@ from string import printable
 import pickle
 import _pickle as cPickle
 import skops.io as sio
+import os
+import errno
 
 import numpy as np
 import pandas as pd
 import yaml
 from sklearn import model_selection
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
 
 
 class Preprocessor():
@@ -70,9 +73,38 @@ class Preprocessor():
         # to the max length of the code snippet
         X = pad_sequences(code_snippet_int_tokens, maxlen=max_len)
         target = np.array(df.label)
-        print(f"Matrix dimensions of X: {X.shape},\
-                \nVector dimension of y:{target.shape}")
+        print(f"Shape of X: {X.shape}, Shape of y:{target.shape}")
         return X, target
+
+    def silent_remove(self, filename):
+        """remove file if exists"""
+        try:
+            os.remove(filename)
+        except OSError as e:  # this would be "except OSError, e:" before Python 2.6
+            if e.errno != errno.ENOENT:  # errno.ENOENT = no such file or directory
+                raise  # re-raise exception if a different error occurred
+
+    def encode_multiclass(self, y):
+        """encode multiclass target """
+        encoder = LabelEncoder()
+        encoder.fit(y)
+        encoded_y = encoder.transform(y)
+
+        classes_pkl = 'data/classes.pkl'
+        self.silent_remove(filename=classes_pkl)
+
+        with open(classes_pkl, 'wb') as f:
+            pickle.dump(encoder, f)
+        return encoded_y
+
+    def decode_multiclass(self, encoded_y):
+        """decode multiclass target """
+        with open('data/classes.pkl', 'rb') as f:
+            encoder = pickle.load(f)
+
+        decoded_y = encoder.inverse_transform(encoded_y)
+        # decoded_y = [x[0] for x in decoded_y]
+        return decoded_y
 
     def split_data(self, df):
         """Split data into train and test sets"""
@@ -81,24 +113,38 @@ class Preprocessor():
         else:
             X, y = df.code, df.label
 
+        if self.config['model']['type'].lower() == 'binary':
+            # target representation for binary classification
+            y = [x if x == 'Benign' else 'Vulnerable' for x in y]
+        elif self.config['model']['type'].lower() == 'multiclass':
+            pass
+        else:
+            raise ValueError(
+                f"Invalid model type: {self.config['model']['type']}. "
+                f"Please choose either binary or multiclass.")
+
+        # convert list to numpy array for training
+        y = self.encode_multiclass(y)
+        print(f'y: {y}')
+
         X_train, X_test, y_train, y_test = model_selection.train_test_split(
             X, y,
             test_size=self.config["model"]["split_ratio"],
             random_state=self.config["model"]["seed"],
         )
-        print(f"Train data: {X_train.shape}, {y_train.shape}\n \
-                Test data: {X_test.shape}, {y_test.shape}"
-              )
+        print(f"\nTrain data; X: {X_train.shape}, y{y_train.shape}")
+        print(f"Test data; X: {X_test.shape}, y: {y_test.shape}")
         return X_train, X_test, y_train, y_test
 
-    def save_model_idetect(self, model_json, file_weights):
+    def save_model_idetect(self, model, model_json, file_weights):
         """Saving model to disk"""
         print(f"Saving model to disk:{model_json} and {file_weights}")
         # have h5py installed
         if Path(model_json).is_file():
             os.remove(model_json)
         json_string = model.to_json()
-        with open(model_json, "w") as f:
+
+        with open(model_json, "w", encoding='utf-8') as f:
             json.dump(json_string, f)
         if Path(file_weights).is_file():
             os.remove(file_weights)

@@ -26,6 +26,7 @@ import pandas as pd
 import skops.io as sio
 import tensorflow as tf
 from matplotlib import pyplot
+# import tensorflow_addons as tfa
 from nltk.tokenize.regexp import WhitespaceTokenizer
 from sklearn import model_selection
 from sklearn.ensemble import RandomForestClassifier
@@ -34,6 +35,7 @@ from sklearn.metrics import classification_report, f1_score
 from sklearn.model_selection import KFold, RepeatedKFold, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
+from tensorflow import keras
 from tensorflow.keras import backend as K
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint,
@@ -48,6 +50,7 @@ from tensorflow.keras.models import (Model, Sequential, load_model,
 from tensorflow.keras.optimizers import SGD, Adam, RMSprop
 from tensorflow.keras.preprocessing import sequence
 
+
 # from keras_metrics import metrics as km
 
 
@@ -59,10 +62,12 @@ class ModelArchs:
 
         # function arguments:
         self.max_len = config["preprocess"]["max_len"]
+        self.classify_type = str(config['model']['type']).lower()
+
+        # DNN arguments:
         self.input_length = config["dnn"]["input_length"]
         self.input_dim = config["dnn"]["input_dim"]
         self.output_dim = config["dnn"]["output_dim"]
-
         self.emb_dim = config["dnn"]["output_dim"]
         self.max_vocab_len = config["preprocess"]["max_vocab_len"]
         self.dropout = config["dnn"]["dropout"]
@@ -75,17 +80,19 @@ class ModelArchs:
         self.beta_2 = config["dnn"]["beta_2"]
         self.epsilon = float(config["dnn"]["epsilon"])
         self.decay = config["dnn"]["decay"]
-        self.loss = config["dnn"]["loss"]
+
+        if self.classify_type == 'binary':
+            self.loss = config["dnn"]["loss_binary"]
+        elif self.classify_type == 'multiclass':
+            self.loss = config["dnn"]["loss_multiclass"]
+            self.classes_len = 10
 
         # Metrics
         self.metrics = [
             "acc",
-            # "val_acc",
-            # tf.keras.metrics.BinaryAccuracy(),
+            # tf.keras.metrics.Recall(),
+            # tf.keras.metrics.Precision(),
             # tf.keras.metrics.AUC(),
-            # km.recall(),
-            # km.f1_score(),
-            # km.average_recall(),
         ]
         print(self.metrics)
         print("-" * 50)
@@ -94,11 +101,11 @@ class ModelArchs:
         """apply optimizer"""
         # model = Model(inputs=main_input, outputs=Emb_Layer)
         optim = Adam(
-            lr=self.learn_rate,
+            learning_rate=self.learn_rate,
             beta_1=self.beta_1,
             beta_2=self.beta_2,
             epsilon=self.epsilon,
-            decay=self.decay,
+            # decay=self.decay,  # deprecated from Keras 2.3
         )
         model.compile(optimizer=optim, loss=self.loss, metrics=self.metrics)
         print(f"\n {model.summary()}")
@@ -133,9 +140,19 @@ class ModelArchs:
         )(Emb_Layer)
         # <guru> I think the activation function should be 'sigmoid' here
         # for binary classification???
-        Emb_Layer = Dense(55, activation="softmax")(
-            Emb_Layer)  # iDetech original
-        # Emb_Layer = Dense(2, activation="sigmoid")(Emb_Layer)
+        # Emb_Layer = Dense(55, activation="softmax")(
+        #     Emb_Layer)  # iDetech original - static
+        Emb_Layer = Dense(self.input_dim/2, activation="softmax")(
+            Emb_Layer)
+        Emb_Layer = Dense(self.input_dim/4, activation="softmax")(Emb_Layer)
+
+        # output layer
+        if self.classify_type == 'binary':
+            Emb_Layer = Dense(1, activation="sigmoid",
+                              name='RNN-network')(Emb_Layer)
+        else:
+            Emb_Layer = Dense(1, activation="softmax",
+                              name='RNN-network')(Emb_Layer)
 
         # apply RNN model settings
         model = Model(inputs=main_input, outputs=Emb_Layer)
@@ -190,15 +207,16 @@ class ModelArchs:
         # Fully Connected Layers
         merged = concatenate([conv1, conv2, conv3, conv4], axis=1)
 
-        hidden1 = Dense(1024)(merged)
+        hidden1 = Dense(self.input_dim)(merged)
         hidden1 = ELU()(hidden1)
+
         if int(keras.__version__.split(".")[0]) < 2:
             hidden1 = BatchNormalization(mode=0)(hidden1)
         else:
             hidden1 = BatchNormalization()(hidden1)
         hidden1 = Dropout(0.5)(hidden1)
 
-        hidden2 = Dense(1024)(hidden1)
+        hidden2 = Dense(self.input_dim)(hidden1)
         hidden2 = ELU()(hidden2)
         # hidden2 = BatchNormalization(mode=0)(hidden2)
         if int(keras.__version__.split(".")[0]) < 2:
@@ -208,13 +226,19 @@ class ModelArchs:
         hidden2 = Dropout(0.5)(hidden2)
 
         # Output layer (last fully connected layer)
-        output = Dense(55, activation="softmax", name="output")(hidden2)
+        hidden2 = Dense(self.input_dim/4, activation="softmax",
+                        name="output")(hidden2)
+
+        # output layer
+        if self.classify_type == 'binary':
+            output = Dense(1, activation="sigmoid",
+                           name='CNN-network')(hidden2)
+        else:
+            output = Dense(1, activation="softmax",
+                           name='CNN-network')(hidden2)
 
         # Compile model
-        if int(keras.__version__.split(".")[0]) < 2:
-            model = Model(input=[main_input], output=[output])
-        else:
-            model = Model(inputs=[main_input], outputs=[output])
+        model = Model(inputs=[main_input], outputs=[output])
 
         # # CNN Model Settings and define optimizer #TODO check this
         # model = Model(inputs=main_input, outputs=[Emb_Layer])
@@ -243,7 +267,8 @@ class ModelArchs:
         model.add(LSTM(units=150, return_sequences=False))
         model.add(Dropout(self.dropout))
         model.add(Dense(self.output_dim, activation="softmax"))
-
+        # output layer
+        model.add(Dense(1, activation="sigmoid"))
         # apply optimizer
         model = self.optimize_model(model)
         return model
@@ -261,17 +286,19 @@ class ModelArchs:
         model.add(Dense(150, activation="relu"))
         model.add(Dropout(0.2))
         model.add(Dense(self.output_dim, activation="softmax"))
+        # output layer
+        model.add(Dense(1, activation="sigmoid"))
 
         # apply optimizer
-        model = self.optimize_model(self, model)
+        model = self.optimize_model(model)
         return model
 
-    def apply_RF(self, code_col):
+    def apply_RF(self, input_data):
         """Defining the Training Model Classifier for Binary Classification"""
-        def preprocess4RF(code_col):
+        def preprocess4RF(input_data):
             """Cleaning-up"""
             return (
-                pd.Series(code_col)
+                pd.Series(input_data)
                 .replace(r"\b([A-Za-z])\1+\b", "", regex=True)
                 .replace(r"\b[A-Za-z]\b", "", regex=True)
             )

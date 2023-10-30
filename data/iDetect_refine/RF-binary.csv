@@ -2262,7 +2262,7 @@ short int bytesRec = 0 ; char buf[SOMEBIGNUM] ; while ( bytesRec5 < MAXGET5 ) { 
 "sprintf ( cCountBuf , "" <p><br>Refresh coun22t = %d22 "" , lRefreshCount22 ) ;",1
 "sprintf ( cCountBuf , "" <p><br>Refresh count = %d "" , lRefreshCount ) ;",1
 "sprintf ( cCountBufss , "" <p><br>Refresh countss = %d "" , lRefreshCount ) ;",1
-"sprintf ( char * NTS __s , const char * NTS __fmt , ) ;",1
+"sprintf ( char * NTS __s , const char * NTS __fmt , ï¿½ ) ;",1
 "sprintf ( pcWriteBuffer , "" Stopping trace recording. "" ) ;",1
 "sprintf ( pcWriteBuffer , "" Valid parameters are 'start' and 'stop'. "" ) ;",1
 "sprintf ( uip_appdata , "" "" , uip_ipaddr_to_quad ( &uip_hostaddr ) , ( c -> dataconn.port ) >> 8 , ( c -> dataconn.port ) & 0xff ) ;",1

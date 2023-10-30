@@ -1,13 +1,14 @@
-# data_file: "data/iDetect_refine/DNN_Binary.csv"
-data_file: data/TinyVul-v2-statement-binary.csv
-eval_data: data/iDetect_refine/RF_Binary.csv
-# data_file: "data/contiki-master_Binary.csv"
+# data_file: "data/iDetect_refine/DNN-binary.csv"
+# data_file: data/iDetect_refine/DNN-multiclass.csv
+data_file: data/TinyVul-v2-statement-multiclass.csv
 result_dir: result/
 apply_balancer: False # True if you want to apply the classes' balancer
-train: False
+train: True
 test: True
-debug: True # mode: turn debugging mode True for preprocessing on debug_rows samples.
-debug_rows: 400
+eval: True
+eval_data: data/iDetect_refine/DNN-binary.csv
+debug: True # mode: turn debugging mode True for preprocessing on debug_rows
+debug_rows: 5000
 
 preprocess:
   raw_dir: data/local
@@ -18,26 +19,24 @@ preprocess:
   processed_data: processed/IoTcode.csv # relative to data_dir
 
 model: # settings for training and testing experiments
-  seed: 30 # seed for reproduciability to generate same set of samples of data splits
-  type: binary # binary or multiclass
-  name: RF # RNN, LSTM, CNN or RF - RandomForest
+  seed: 30 # seed for reproduciability to generate same set of samples
+  type: multiclass # binary or multiclass
+  name: RNN # RNN, LSTM, CNN or RF - RandomForest, multiDNN
   k-fold: 20 # number of cross-validation folds
   split_ratio: 0.30 # ratio of training and testing ratio
   path: result/
   save: True # do you want to save the trained model or not?
-  use_neptune:
-    True # Boolean value to switch between enabling neptune usage or not
-    # for tracking the experiments in neptune.ai,
-    # If True, make sure you have correctly configured '.neptune_config.ini' file
+  use_neptune: False # switch between enabling neptune usage or not
+
 dnn:
-  epochs: 50 # default iDetect 800
+  epochs: 100 # default iDetect 800
   debug_epochs: 3 # incase just bubugging the code, running or not
   batch: 128 # 64 iDetect
-  input_length: 150
+  input_length: 150 # max input sequence length
   input_dim: 150
   output_dim: 32
   lr: 1e-4
-  patience: 100
+  patience: 35
   optimizer: adam # optimizer can be adam or sgd or any other
   l2_reg: 1e-4 # L2 regularizer
   dropout: 0.0 # dropout rate
@@ -46,6 +45,7 @@ dnn:
   beta_2: 0.999
   epsilon: 1e-08
   decay: 0.0
-  verbose: 2 # display the running information of the trainig or hide, 2 means show the info
-  loss: sparse_categorical_crossentropy # iDetect has used 'sparse_categorical_crossentropy',
-  # categorical_crossentropy for multiclass or binary_crossentropy for binary classification.
+  verbose: 2 # running info of the trainig or hide, 2 means show
+  # loss_multiclass: sparse_categorical_crossentropy
+  loss_multiclass: categorical_crossentropy # for multiclass
+  loss_binary: binary_crossentropy #for binary classification.

@@ -5,6 +5,7 @@ import random
 import re
 import time
 import warnings
+from configparser import ConfigParser
 from pathlib import Path
 
 import pandas as pd
@@ -39,3 +40,31 @@ class Utility():
             print(log_line)
         with open(log_file, 'a') as f:
             f.write(log_line + '\n')
+
+    def init_neptune(self, model_name, data_file, epochs):
+        """Return neptune init object if it is enabled"""
+        import neptune
+
+        nt_config = ConfigParser()
+        neptune_file = ".neptune.ini"
+        nt_config.read(neptune_file)
+        project = nt_config["neptune_access"]["project"]
+        api_token = nt_config["neptune_access"]["api_token"]
+        # epochs = str(self.config['dnn']['epochs'])
+        exprem_tags = [model_name, f"epochs:{epochs}", data_file]
+
+        print("\n" + "-" * 30 + "Neptune" + "-" * 30 + "\n")
+        print("Reading neptune config file: ", neptune_file)
+
+        # put your neptune credentials here
+        nt_run = neptune.init_run(
+            project=project,
+            api_token=api_token,
+            name="Tiny-Vul",
+            tags=exprem_tags
+        )
+        # save the configuration and module file to Neptune.
+        nt_run["configurations"].upload("config/classifier.yaml")
+        nt_run["model_archs"].upload("classifier/models.py")
+        nt_run["code"].upload("classifier/classifier.py")
+        return nt_run

@@ -17,13 +17,18 @@ from configparser import ConfigParser
 from pathlib import Path
 from datetime import datetime
 from sklearn import model_selection
+import numpy as np
 
 # from string import printable
 import pandas as pd
 import tensorflow as tf
 import yaml
+import os
+import errno
 from dvclive.keras import DVCLiveCallback
 from sklearn.metrics import classification_report
+import pickle
+from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
 
 # custom modules
 from classifier.models import ModelArchs
@@ -43,9 +48,9 @@ class Classifier:
     def __init__(self):
         self.util = Utility()
         self.config = self.util.load_config("config/classifier.yaml")
-        self.model = None
-        self.history = None
         self.arch = ModelArchs(self.config)
+
+        self.preprocess = Preprocessor(self.config)
 
     def update_config_args(self, paras):
         """create model dir to store it
@@ -67,7 +72,8 @@ class Classifier:
         if self.config["debug"] == True:
             self.config["model"]["path"] = self.config["model"]["path"].rsplit(
                 "/", 1)[0] + "-debug/"
-            self.config["model"]["use_neptune"] = False
+            # TODO: enable this line.
+            # self.config["model"]["use_neptune"] = True
 
         if self.config["train"]:
             Path(self.config["model"]["path"]).mkdir(
@@ -75,39 +81,12 @@ class Classifier:
         print(f"\n\nModel path: {self.config['model']['path']}")
         return self.config
 
-    def init_neptune(self, model_name, data_file):
-        """Return neptune init object if it is enabled"""
-        import neptune
-
-        nt_config = configParser()
-        neptune_file = ".neptune.ini"
-        nt_config.read(neptune_file)
-        project = nt_config["neptune_access"]["project"]
-        api_token = nt_config["neptune_access"]["api_token"]
-        epochs = str(self.config['dnn']['epochs'])
-        exprem_tags = [model_name, f"epochs:{epochs}", data_file]
-
-        print("\n" + "-" * 30 + "Neptune" + "-" * 30 + "\n")
-        print("Reading neptune config file: ", neptune_file)
-
-        # put your neptune credentials here
-        nt_run = neptune.init_run(
-            project=project,
-            api_token=api_token,
-            name="IoTvulCode",
-            tags=exprem_tags
-        )
-        # save the configuration and module file to Neptune.
-        nt_run["configurations"].upload("config.yaml")
-        nt_run["model_archs"].upload("src/models.py")
-        nt_run["code"].upload("src/classifier.py")
-        return nt_run
-
     def apply_checkpoints(self, model, cp_path, patience):
         """apply tf callbacks to store the best model checkpoint and apply early stopping."""
         log_dir = cp_path + "logs/"
         Path(log_dir).mkdir(parents=True, exist_ok=True)
         model.save_weights(cp_path + "pre-fit.weights")
+
         tf_callbacks = [
             tf.keras.callbacks.EarlyStopping(
                 patience=patience,
@@ -127,12 +106,9 @@ class Classifier:
 
     def select_model_arch(self):
         """Choose ML model"""
-
         model_name = self.config["model"]["name"]
-
         print("\n\n" + "=" * 25 + " " + model_name +
               " Model Training " + "=" * 25)
-        print(f"Configurations: \n {config}")
         print("-" * 50)
 
         if model_name == "RNN":
@@ -141,8 +117,8 @@ class Classifier:
             model = self.arch.apply_CNN()
         elif model_name == "LSTM":
             model = self.arch.apply_LSTM()
-        elif model_name == "RF":
-            model = self.arch.apply_RF(df)
+        # elif model_name == "RF":
+        #     model = self.arch.apply_RF(input_data)
         elif model_name == "multiDNN":
             model = self.arch.apply_multiDNN()
         else:
@@ -155,18 +131,17 @@ class Classifier:
         model_name = self.config["model"]["name"]
         epochs = self.config["dnn"]["epochs"]
 
-        # Apply callbacks for training to store the best model checkpoint
-        # and apply early stopping.
         if model_name != "RF":
             # Select the model architecture
             model = self.select_model_arch()
-
             # store metadata to neptune.ai
-            if self.config["model"]["use_neptune"]:
+            if self.config["model"]["use_neptune"] is True:
                 from neptune.integrations.tensorflow_keras import NeptuneCallback
-                nt_run = self.init_neptune(
-                    model_name, epochs, self.config["data_file"])
-
+                nt_run = self.util.init_neptune(
+                    model_name=model_name,
+                    data_file=self.config["data_file"],
+                    epochs=str(self.config['dnn']['epochs'])
+                )
             tf_callbacks = self.apply_checkpoints(
                 model=model,
                 cp_path=self.config["model"]["path"],
@@ -175,26 +150,32 @@ class Classifier:
             if self.config["model"]["use_neptune"]:
                 neptune_cbk = NeptuneCallback(
                     run=nt_run,
-                    base_namespace="metrics"
+                    base_namespace="metrics",
+                    log_model_diagram=True,
+                    log_on_batch=True,
                 )
                 tf_callbacks.append(neptune_cbk)
 
             # Fitting model and cross-validation
+            # Apply callbacks for training to store the best model checkpoint
+            # and apply early stopping.
+
             history = model.fit(
-                X_train,
-                y_train,
+                x=X_train,
+                y=y_train,
                 epochs=epochs,
                 batch_size=self.config["dnn"]["batch"],
                 validation_data=(X_test, y_test),
-                # callbacks=[tf_callbacks],
-                callbacks=[DVCLiveCallback(save_dvc_exp=True)],
+                verbose=1,
+                callbacks=[tf_callbacks],
+                # use_multiprocessing=True,
+                # workers=8,
+                # callbacks=[DVCLiveCallback(save_dvc_exp=True)],
             )
-            loss, accuracy = model.evaluate(X_test, y_test, verbose=1)
-            fig_name = self.config["model"]["path"] + model_name
 
+            fig_name = self.config["model"]["path"] + model_name
             plot = Plotter(self.config)
             plot.plot_history(history, fig_name)
-            print(f"\nAccuracy of the model: {accuracy}\n")
 
             # save the tracked files
             if self.config["model"]["use_neptune"]:
@@ -202,12 +183,11 @@ class Classifier:
                 nt_run["loss_curve"].track_files(fig_name + "_loss.pdf")
         else:
             # TODO: log non-DNN models output to Neptune
-            # nt_run["acc"] = ?? or params=dict
             # Fitting
-            model = self.arch.apply_RF(df.code)
-            # model = self.select_model_arch()
+            model = self.arch.apply_RF(input_data=X_train)
             model.fit(X_train, y_train)
             acc = model.score(X_test, y_test)
+
             print(f"Accuracy: {acc}")
             print(f"Trained with non-DNN model: {model_name}")
         return model
@@ -235,27 +215,21 @@ class Classifier:
             if Path(model_file).is_file():
                 model = self.load_tf_model(model_file)
                 print("\nEvaluating the model...\n")
+
                 # evaluate the model
-                loss, acc = model.evaluate(X_eval, y_eval, verbose=1)
+                eval_result = model.evaluate(X_eval, y_eval, verbose=1)
+                print(f'Evaluation Result: {eval_result}')
+                print(f'y_eval: {y_eval}')
 
-                # y_pred = model.predict(X_eval)
-                # print(f'y_pred: {y_pred}')
-                # print(f'y_eval: {y_eval}')
-                # print(f'\ny_pred.shape: {y_pred.shape}')
-                # print(f'y_eval.shape: {y_eval.shape}')
+                # predict the model
+                y_pred = model.predict(X_eval)
+                y_pred = np.argmax(y_pred, axis=1)
+                print(f'y_pred: {y_pred}')
 
-                # # y_pred = np.argmax(y_pred, axis=1)
-                # # y_eval = np.argmax(y_eval, axis=1)
+                y_pred = self.preprocess.decode_multiclass(y_pred)
+                y_eval = self.preprocess.decode_multiclass(y_eval)
+                print(classification_report(y_eval, y_pred))
 
-                # print(f'\ny_pred: {y_pred}')
-                # print(f'y_eval: {y_eval}')
-                # print(f'\ny_pred.shape: {y_pred.shape}')
-                # print(f'y_eval.shape: {y_eval.shape}')
-
-                # cls_report = classification_report(y_eval, y_pred)
-                # print(f"Classification Report: \n{cls_report}")
-                print('loss: ', loss)
-                print('acc: ', acc)
             else:
                 print(f"\n\nModel file: {model_file} not found!")
                 print("Please train the model first!")
@@ -274,44 +248,53 @@ class Classifier:
                             help="Data file for train/test.")
         return parser.parse_args()
 
+    def run(self):
+        """Run the training and testing process"""
+        paras = self.parse_args()
+        if self.config["model"]["name"] == "RF":
+            assert self.config['train'] is True, \
+                'The model should be trained first for non-DNN models!'
+
+        # update config args
+        self.config = self.update_config_args(paras=paras)
+        print('Starting training and testing process with configuration:\n',
+              self.config)
+
+        # load the preprocessor
+        model_file = self.config["model"]["path"] + "model-final.h5"
+
+        # Load input data
+        df = self.preprocess.load_data(data_file=self.config["data_file"])
+
+        # Split the dataset
+        X_train, X_test, y_train, y_test = self.preprocess.split_data(df)
+
+        # Train the model
+        if self.config['train']:
+            model = self.train_model(
+                model_file, X_train, y_train, X_test, y_test)
+
+            # save the trained model
+            self.preprocess.save_model(model, model_file)
+
+        # Evaluation of the trained model
+        if self.config["eval"]:
+            # load the trained model for evaluation
+            df_eval = self.preprocess.load_data(
+                data_file=self.config["eval_data"])
+
+            if self.config["model"]["name"] != "RF":
+                X_eval, y_eval = self.preprocess.tokenize_data(
+                    df=df_eval, max_len=self.config["preprocess"]["max_len"])
+
+                # output_size = len(set(list(y_train)))
+                # self.evaluate_model(model_file, X_eval, y_eval)
+                self.evaluate_model(model_file, X_test, y_test)
+            else:
+                X_eval, y_eval = df_eval.code, df_eval.label
+                self.evaluate_model(model, X_eval, y_eval)
+
 
 if __name__ == "__main__":
     classfr = Classifier()
-    paras = classfr.parse_args()
-    config = classfr.config
-
-    if config["model"]["name"] == "RF":
-        assert config['train'] is True, \
-            'The model should be trained first for non-DNN models!'
-
-    # update config args
-    config = classfr.update_config_args(paras=paras)
-    model_file = config["model"]["path"] + "model-final.h5"
-
-    preprocess = Preprocessor(config)
-    # Load input data
-    df = preprocess.load_data(data_file=config["data_file"])
-
-    # Split the dataset
-    X_train, X_test, y_train, y_test = preprocess.split_data(df)
-
-    # Train the model
-    if config['train']:
-        model = classfr.train_model(
-            model_file, X_train, y_train, X_test, y_test)
-
-        # save the trained model
-        preprocess.save_model(model, model_file)
-
-    # TODO: Evaluation of the trained model
-    df_eval = preprocess.load_data(data_file=config["eval_data"])
-
-    if config["test"]:
-        if config["model"]["name"] != "RF":
-            X_eval, y_eval = preprocess.tokenize_data(
-                df=df_eval, max_len=config["preprocess"]["max_len"])
-            # output_size = len(set(list(y_train)))
-            classfr.evaluate_model(model_file, X_eval, y_eval)
-        else:
-            X_eval, y_eval = df_eval.code, df_eval.label
-            classfr.evaluate_model(model, X_eval, y_eval)
+    classfr.run()
