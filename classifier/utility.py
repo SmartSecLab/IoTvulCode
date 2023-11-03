@@ -12,6 +12,7 @@ import pandas as pd
 import requests
 import yaml
 from humanfriendly import format_timespan
+import tensorflow as tf
 
 warnings.filterwarnings("ignore")
 
@@ -40,6 +41,22 @@ class Utility():
             print(log_line)
         with open(log_file, 'a') as f:
             f.write(log_line + '\n')
+
+    def load_tf_model(self, model_file):
+        """ 
+        Load model from disk
+        Args:
+            model_file (_type_): trained tensorflow model (h5)
+            file_weights (_type_): file weights of the trained model
+        """
+        print(f"\nLoading the trained model from: \n{model_file}")
+        model = tf.keras.models.load_model(model_file)
+        # model.load_weights(file_weights)
+        print('-'*20)
+        print(model.summary())
+        print("\nModel loaded successfully!\n")
+        print('-'*20)
+        return model
 
     def init_neptune(self, model_name, data_file, epochs):
         """Return neptune init object if it is enabled"""

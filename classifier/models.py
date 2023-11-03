@@ -75,7 +75,7 @@ class ModelArchs:
 
         # Optimizer arguments:
         self.optimizer = config["dnn"]["optimizer"]  # adam
-        self.learn_rate = float(config["dnn"]["lr"])
+        self.learn_rate = config["dnn"]["lr"]
         self.beta_1 = config["dnn"]["beta_1"]
         self.beta_2 = config["dnn"]["beta_2"]
         self.epsilon = float(config["dnn"]["epsilon"])
@@ -99,14 +99,15 @@ class ModelArchs:
 
     def optimize_model(self, model):
         """apply optimizer"""
-        # model = Model(inputs=main_input, outputs=Emb_Layer)
+        # model = Model(inputs=main_input, outputs=emb_layer)
         optim = Adam(
-            learning_rate=self.learn_rate,
-            beta_1=self.beta_1,
-            beta_2=self.beta_2,
-            epsilon=self.epsilon,
+            learning_rate=1e-4,
+            # beta_1=self.beta_1,
+            # beta_2=self.beta_2,
+            # epsilon=self.epsilon,
             # decay=self.decay,  # deprecated from Keras 2.3
         )
+        # model.compile(optimizer=optim, loss=self.loss, metrics=self.metrics)
         model.compile(optimizer=optim, loss=self.loss, metrics=self.metrics)
         print(f"\n {model.summary()}")
         return model
@@ -114,51 +115,103 @@ class ModelArchs:
     def apply_RNN(self):
         """
         RNN Model for Binary Classification
-        <guru> both Binary and Multi-Class codes in iDetect are identical,
-        I don't know why author is making confusion by making
-        multiple replications without their distinct applications.
         """
         # Main Input
-        main_input = Input(shape=(self.max_len,), dtype="int32")
+        # main_input = Input(shape=(self.max_len,), dtype="int32")
+
+        main_input = Input(shape=(self.max_len,))
 
         # Embedding Layers
-        # Emb_Layer = Embedding(input_dim=150, output_dim=32, input_length=150,
+        # emb_layer = Embedding(input_dim=150, output_dim=32, input_length=150,
         # W_regularizer=regularizers.l2(1e-4))(main_input)  # original license
-        Emb_Layer = Embedding(
+        emb_layer = Embedding(
             input_dim=self.input_dim,
             output_dim=self.output_dim,
             input_length=self.input_length,
         )(main_input)
 
-        Emb_Layer = Bidirectional(
+        emb_layer = Bidirectional(
             SimpleRNN(
                 self.input_dim,
                 return_sequences=False,
                 dropout=self.dropout,
                 recurrent_dropout=self.recur_dropout,
             )
-        )(Emb_Layer)
+        )(emb_layer)
         # <guru> I think the activation function should be 'sigmoid' here
         # for binary classification???
-        # Emb_Layer = Dense(55, activation="softmax")(
-        #     Emb_Layer)  # iDetech original - static
-        Emb_Layer = Dense(self.input_dim/2, activation="softmax")(
-            Emb_Layer)
-        Emb_Layer = Dense(self.input_dim/4, activation="softmax")(Emb_Layer)
+        # emb_layer = Dense(55, activation="softmax")(
+        #     emb_layer)  # iDetech original - static
+
+        # initializer = tf.keras.initializers.RandomNormal(
+        #     mean=0.0, stddev=0.05, seed=None)
+        initializer = tf.keras.initializers.RandomNormal(mean=0., stddev=1.)
+
+        emb_layer = Dense(
+            units=self.input_dim/2,
+            activation="relu",
+            kernel_initializer=initializer)(emb_layer, )
+
+        emb_layer = Dense(self.input_dim/4, activation="tanh")(emb_layer)
 
         # output layer
         if self.classify_type == 'binary':
-            Emb_Layer = Dense(1, activation="sigmoid",
-                              name='RNN-network')(Emb_Layer)
+            emb_layer = Dense(1, activation="sigmoid",
+                              name='RNN-network')(emb_layer)
         else:
-            Emb_Layer = Dense(1, activation="softmax",
-                              name='RNN-network')(Emb_Layer)
+            emb_layer = Dense(1, activation="sigmoid",
+                              name='RNN-network')(emb_layer)
 
         # apply RNN model settings
-        model = Model(inputs=main_input, outputs=Emb_Layer)
+        model = Model(inputs=main_input, outputs=emb_layer)
 
         # apply optimizer
         model = self.optimize_model(model)
+        return model
+
+    # def apply_RNN(self):
+    #     inputs = Input(shape=(self.max_len,))
+    #     sharable_embedding = Embedding(self.input_dim,
+    #                                    output_dim=32,
+    #                                    #    weights=[embedding_matrix],
+    #                                    input_length=self.max_len,
+    #                                    #    trainable=self.embedding_trainable
+    #                                    )(inputs)
+    #     dense = Flatten()(sharable_embedding)
+    #     dense = Dense(self.input_dim,
+    #                   activation='tanh')(dense)
+
+    #     # dense = Dense(self.input_dim,
+    #     #               activation='tanh')(dense)
+
+    #     # dense = Dense(int(self.input_dim / 2),
+    #     #               activation='tanh')(dense)
+    #     rnn_out = LSTM(units=64, dropout=0.2, recurrent_dropout=0.2)
+
+    #     dense = Dense(int(self.input_dim / 4))(rnn_out)
+    #     dense = Dense(1, activation='sigmoid')(dense)
+
+    #     model = Model(inputs=inputs, outputs=dense, name='RNN_network')
+    #     #     # apply optimizer
+    #     model = self.optimize_model(model)
+    #     return model
+
+    # baseline
+    def apply_DNN(self):
+        # create model
+        model = Sequential()
+        model.add(Dense(self.max_len, input_shape=(
+            self.max_len,), activation='sigmoid'))
+        model.add(Dense(self.max_len/4,  activation='sigmoid'))
+        model.add(Dropout(0.0002))
+        model.add(Dense(1, activation='sigmoid'))
+
+        # Compile model
+        sgd = SGD(learning_rate=0.001, momentum=0.9)
+        model.compile(loss='binary_crossentropy',
+                      optimizer=sgd,
+                      metrics=['acc']
+                      )
         return model
 
     def apply_CNN(self):
@@ -241,7 +294,7 @@ class ModelArchs:
         model = Model(inputs=[main_input], outputs=[output])
 
         # # CNN Model Settings and define optimizer #TODO check this
-        # model = Model(inputs=main_input, outputs=[Emb_Layer])
+        # model = Model(inputs=main_input, outputs=[emb_layer])
 
         # apply optimizer
         model = self.optimize_model(model)

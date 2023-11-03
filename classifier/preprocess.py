@@ -17,6 +17,7 @@ from string import printable
 import pickle
 import _pickle as cPickle
 import skops.io as sio
+from tabulate import tabulate
 import os
 import errno
 
@@ -26,6 +27,10 @@ import yaml
 from sklearn import model_selection
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
+
+# import RandomOverSampler
+from imblearn.over_sampling import RandomOverSampler
+from imblearn.under_sampling import NearMiss
 
 
 class Preprocessor():
@@ -59,7 +64,7 @@ class Preprocessor():
         print(f"\nShape of the input data: {df.shape}")
         print("\nSamples:")
         print("-" * 50)
-        print(df.head(3))
+        print(tabulate(df.head(3), df.columns, tablefmt="simple_grid"))
         print("-" * 50)
         return df
 
@@ -71,7 +76,11 @@ class Preprocessor():
 
         # Pad the sequences (left padded with zeros)
         # to the max length of the code snippet
-        X = pad_sequences(code_snippet_int_tokens, maxlen=max_len)
+        X = pad_sequences(
+            code_snippet_int_tokens,
+            maxlen=max_len,
+            padding='post'
+        )
         target = np.array(df.label)
         print(f"Shape of X: {X.shape}, Shape of y:{target.shape}")
         return X, target
@@ -106,35 +115,93 @@ class Preprocessor():
         # decoded_y = [x[0] for x in decoded_y]
         return decoded_y
 
+    def show_y(self, y):
+        """Count the number of labels in the dataset"""
+        weights = list(np.bincount(y))
+        weights = {i: weights[i] for i in range(len(weights))}
+        print('+'*30)
+        print(f'Weight of labels:\n{weights}')
+        print('+'*30)
+
+    # def show_x(self, X):
+    #     """Show x values"""
+    #     print('+'*40)
+    #     print(f'x_type single: {type(X[0][0])}')
+    #     print(f'X type matrix: {type(X)}')
+    #     # np.save('X_train_part.txt', X_train)
+    #     # with open('X_train_part.txt', 'w') as f:
+    #     #     for item in X:
+    #     #         f.write("%s\n" % item)
+    #     # print(f'x_value sample: {X}')
+    #     print('+'*40)
+
+    # define function to apply RandomOverSampler
+    def apply_over_sampling(self, X, y):
+        # define oversampling strategy
+        oversample = RandomOverSampler(sampling_strategy='minority')
+        # fit and apply the transform
+        X_over, y_over = oversample.fit_resample(X, y)
+        return X_over, y_over
+
+    # define function to apply under_sampling
+    def apply_under_sampling(self, X, y):
+        # define undersampling strategy
+        undersample = NearMiss(version=1, n_neighbors=3)
+        # fit and apply the transform
+        X_under, y_under = undersample.fit_resample(X, y)
+        return X_under, y_under
+
     def split_data(self, df):
         """Split data into train and test sets"""
-        if self.config['model']['name'] != 'RF':
-            X, y = self.tokenize_data(df, self.config["preprocess"]["max_len"])
-        else:
-            X, y = df.code, df.label
+        if self.config['model']['type'].lower() == 'multiclass':
+            # TODO: do we need this filterization?
+            # filter out labels with less than 200 samples
+            df = df.groupby('label').filter(
+                lambda v: len(v) > 200).reset_index(drop=True)
 
-        if self.config['model']['type'].lower() == 'binary':
+        elif self.config['model']['type'].lower() == 'binary':
             # target representation for binary classification
-            y = [x if x == 'Benign' else 'Vulnerable' for x in y]
-        elif self.config['model']['type'].lower() == 'multiclass':
-            pass
+            df['label'] = df['label'].apply(
+                lambda x: x if x == 'Benign' else 'Vulnerable')
+            # y = [v if v == 'Benign' else 'Vulnerable' for v in y]
         else:
             raise ValueError(
-                f"Invalid model type: {self.config['model']['type']}. "
+                f"Invalid model type: {self.config['model']['type']}."
                 f"Please choose either binary or multiclass.")
+
+        print(f'Distribution of labels: \n{df.label.value_counts()}')
+
+        if self.config['model']['name'] == 'RF':
+            X, y = df.code, df.label
+        else:
+            X, y = self.tokenize_data(df, self.config["preprocess"]["max_len"])
 
         # convert list to numpy array for training
         y = self.encode_multiclass(y)
-        print(f'y: {y}')
+
+        # X, y = self.apply_over_sampling(X, y)
+        X, y = self.apply_under_sampling(X, y)
+
+        # X = X.astype('float32')
+        # self.show_x(X)
+        self.show_y(y)
 
         X_train, X_test, y_train, y_test = model_selection.train_test_split(
             X, y,
             test_size=self.config["model"]["split_ratio"],
-            random_state=self.config["model"]["seed"],
+            # random_state=self.config["model"]["seed"],
         )
         print(f"\nTrain data; X: {X_train.shape}, y{y_train.shape}")
         print(f"Test data; X: {X_test.shape}, y: {y_test.shape}")
         return X_train, X_test, y_train, y_test
+
+    def save_model(self, model, model_file):
+        """Save the trained model as a pickle file"""
+        if self.config["model"]["save"]:
+            if self.config["model"]["name"] != "RF":
+                model.save(model_file)
+            else:
+                sio.dumps(model_file)
 
     def save_model_idetect(self, model, model_json, file_weights):
         """Saving model to disk"""
@@ -150,13 +217,5 @@ class Preprocessor():
             os.remove(file_weights)
         model.save_weights(file_weights)
 
-    def save_model(self, model, model_file):
-        """Save the trained model as a pickle file"""
-        if self.config["model"]["save"]:
-            if self.config["model"]["name"] != "RF":
-                model.save(model_file)
-            else:
-                sio.dumps(model_file)
-
-        print(f"The final trained model is saved at: {model_file}")
+        print(f"The final trained model is saved at: {model_json}")
         print("\n" + "-" * 35 + "Training Completed" + "-" * 35 + "\n")

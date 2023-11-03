@@ -29,6 +29,9 @@ from dvclive.keras import DVCLiveCallback
 from sklearn.metrics import classification_report
 import pickle
 from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
+from sklearn.utils import class_weight
+from tabulate import tabulate
+
 
 # custom modules
 from classifier.models import ModelArchs
@@ -50,7 +53,7 @@ class Classifier:
         self.config = self.util.load_config("config/classifier.yaml")
         self.arch = ModelArchs(self.config)
 
-        self.preprocess = Preprocessor(self.config)
+        self.prepro = Preprocessor(self.config)
 
     def update_config_args(self, paras):
         """create model dir to store it
@@ -121,6 +124,8 @@ class Classifier:
         #     model = self.arch.apply_RF(input_data)
         elif model_name == "multiDNN":
             model = self.arch.apply_multiDNN()
+        elif model_name == "DNN":
+            model = self.arch.apply_DNN()
         else:
             print("Invalid model! Please select a valid model!")
             exit(1)
@@ -156,10 +161,19 @@ class Classifier:
                 )
                 tf_callbacks.append(neptune_cbk)
 
+            # class_weights = class_weight.compute_class_weight(
+            #     class_weight='balanced',
+            #     classes=np.unique(y_train),
+            #     y=y_train)
+
+            # class_weights = dict(enumerate(class_weights))
+            # # try: hardcoded blancer
+            # # class_weights = {0: 0.5, 1: 0.5}
+            # print(f'Class_weights: {class_weights}')
+
             # Fitting model and cross-validation
             # Apply callbacks for training to store the best model checkpoint
             # and apply early stopping.
-
             history = model.fit(
                 x=X_train,
                 y=y_train,
@@ -171,6 +185,7 @@ class Classifier:
                 # use_multiprocessing=True,
                 # workers=8,
                 # callbacks=[DVCLiveCallback(save_dvc_exp=True)],
+                # class_weight=class_weights,
             )
 
             fig_name = self.config["model"]["path"] + model_name
@@ -192,49 +207,50 @@ class Classifier:
             print(f"Trained with non-DNN model: {model_name}")
         return model
 
-    def load_tf_model(self, model_file):
-        """ 
-        Load model from disk
-        Args:
-            model_file (_type_): trained tensorflow model (h5)
-            file_weights (_type_): file weights of the trained model
-        """
-        print(f"\nLoading the trained model from: \n{model_file}")
-        model = tf.keras.models.load_model(model_file)
-        # model.load_weights(file_weights)
-        print('-'*20)
-        print(model.summary())
-        print("\nModel loaded successfully!\n")
-        print('-'*20)
-        return model
+    # reconstruct labels from y_pred
+    def reconstruct_labels(self, y_eval, y_pred):
+        """Reconstruct labels from y_pred"""
+        y_pred_np = np.argmax(y_pred, axis=1)
+        print(f'y_pred_numpy: \n{y_pred_np}')
 
-    def evaluate_model(self, model_file, X_eval, y_eval):
+        y_pred = (y_pred > 0.5).astype('int32')
+
+        y_eval = self.prepro.decode_multiclass(y_eval)
+        y_pred = self.prepro.decode_multiclass(y_pred)
+
+        print('+'*40)
+        print(f'\n\ny_eval targets: \n{pd.value_counts(list(y_eval))}')
+        print(f'\n\ny_pred targets: \n{pd.value_counts(list(y_pred))}')
+        print('+'*40)
+        print(classification_report(y_eval, y_pred))
+        return y_pred
+
+    def evaluate_model(self, model, X_eval, y_eval):
         """Evaluate the trained model
         """
+        print(f'Model Type: {type(model)}')
         if self.config["model"]["name"] != "RF":
-            if Path(model_file).is_file():
-                model = self.load_tf_model(model_file)
-                print("\nEvaluating the model...\n")
+            # if type(model) == 'keras.src.engine.functional.Functional':
+            #     print("Model is a functional model")
+            #     model.summary()
+            #     model = self.util.load_tf_model(model)
+            # elif Path(model).is_file():
 
-                # evaluate the model
-                eval_result = model.evaluate(X_eval, y_eval, verbose=1)
-                print(f'Evaluation Result: {eval_result}')
-                print(f'y_eval: {y_eval}')
+            print("\nEvaluating the model...\n")
+            # evaluate the model
+            eval_result = model.evaluate(X_eval, y_eval, verbose=1)
+            print(f'Evaluation Result: {eval_result}')
+            print('\nDone evaluation!\n')
+            print('='*40)
 
-                # predict the model
-                y_pred = model.predict(X_eval)
-                y_pred = np.argmax(y_pred, axis=1)
-                print(f'y_pred: {y_pred}')
-
-                y_pred = self.preprocess.decode_multiclass(y_pred)
-                y_eval = self.preprocess.decode_multiclass(y_eval)
-                print(classification_report(y_eval, y_pred))
-
-            else:
-                print(f"\n\nModel file: {model_file} not found!")
-                print("Please train the model first!")
+            # predict the model
+            y_pred = model.predict(X_eval)
+            self.reconstruct_labels(y_eval, y_pred)
+            # else:
+            #     print(f"\n\nModel file: {model} not found!")
+            #     print("Please train the model first!")
         else:
-            result = model_file.score(X_eval, y_eval)
+            result = model.score(X_eval, y_eval)
             print("Result: ", result)
         print("\n" + "-" * 35 + "Testing Completed" + "-" * 35 + "\n")
 
@@ -257,17 +273,18 @@ class Classifier:
 
         # update config args
         self.config = self.update_config_args(paras=paras)
-        print('Starting training and testing process with configuration:\n',
+        print('-'*40)
+        print('\nStarting training and testing with configuration:\n',
               self.config)
 
         # load the preprocessor
         model_file = self.config["model"]["path"] + "model-final.h5"
 
         # Load input data
-        df = self.preprocess.load_data(data_file=self.config["data_file"])
+        df = self.prepro.load_data(data_file=self.config["data_file"])
 
         # Split the dataset
-        X_train, X_test, y_train, y_test = self.preprocess.split_data(df)
+        X_train, X_test, y_train, y_test = self.prepro.split_data(df)
 
         # Train the model
         if self.config['train']:
@@ -275,24 +292,23 @@ class Classifier:
                 model_file, X_train, y_train, X_test, y_test)
 
             # save the trained model
-            self.preprocess.save_model(model, model_file)
+            self.prepro.save_model(model, model_file)
 
         # Evaluation of the trained model
         if self.config["eval"]:
             # load the trained model for evaluation
-            df_eval = self.preprocess.load_data(
-                data_file=self.config["eval_data"])
+            # df_eval = self.prepro.load_data(
+            #     data_file=self.config["eval_data"])
 
             if self.config["model"]["name"] != "RF":
-                X_eval, y_eval = self.preprocess.tokenize_data(
-                    df=df_eval, max_len=self.config["preprocess"]["max_len"])
+                # X_eval, y_eval = self.prepro.tokenize_data(
+                #     df=df_eval, max_len=self.config["preprocess"]["max_len"])
 
-                # output_size = len(set(list(y_train)))
                 # self.evaluate_model(model_file, X_eval, y_eval)
-                self.evaluate_model(model_file, X_test, y_test)
-            else:
-                X_eval, y_eval = df_eval.code, df_eval.label
-                self.evaluate_model(model, X_eval, y_eval)
+                self.evaluate_model(model, X_test, y_test)
+            # else:
+            #     X_eval, y_eval = df_eval.code, df_eval.label
+            #     self.evaluate_model(model, X_eval, y_eval)
 
 
 if __name__ == "__main__":
