@@ -204,7 +204,7 @@ class ModelArchs:
         model = Sequential()
         model.add(Dense(self.max_len, input_shape=(
             self.max_len,), activation='sigmoid'))
-        model.add(Dense(self.max_len/4,  activation='sigmoid'))
+        model.add(Dense(int(self.max_len/4),  activation='sigmoid'))
         model.add(Dropout(0.0002))
 
         # output layer
@@ -353,12 +353,39 @@ class ModelArchs:
             weights=[embedding_matrix],
             input_length=MAX_LEN,
             trainable=False))
-        model.add(LSTM(input_shape=(self.input_dim, 1),
-                       units=MAX_LEN/2, return_sequences=True))
+        model.add(LSTM(units=int(MAX_LEN/2), return_sequences=True))
         model.add(Dropout(self.dropout))
 
         # Second LSTM layer with 128 units
-        model.add(LSTM(units=MAX_LEN/4, return_sequences=True))
+        model.add(LSTM(units=int(MAX_LEN/4), return_sequences=True))
+        model.add(Dropout(self.dropout))
+
+        # Third LSTM layer with 100 units
+        model.add(LSTM(units=128, return_sequences=False))
+        model.add(Dropout(self.dropout))
+        model.add(Dense(self.output_dim, activation="softmax"))
+        # output layer
+        model.add(Dense(self.output_dim,
+                  activation=self.activ_last_layer,))
+        # apply optimizer
+        model = self.optimize_model(model)
+        return model
+
+    # define LSTM with embedding layer
+    def apply_LSTM_emb(self):
+        """
+        multi-layer DNN model for the training
+        """
+        model = Sequential()
+        # First LSTM layer defining the input sequence length
+        model.add(
+            LSTM(input_shape=(self.input_dim, 1),
+                 units=128, return_sequences=True)
+        )
+        model.add(Dropout(self.dropout))
+
+        # Second LSTM layer with 128 units
+        model.add(LSTM(units=128, return_sequences=True))
         model.add(Dropout(self.dropout))
 
         # Third LSTM layer with 100 units
