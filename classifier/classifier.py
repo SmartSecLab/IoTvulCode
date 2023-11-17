@@ -25,7 +25,7 @@ import tensorflow as tf
 import yaml
 import os
 import errno
-from dvclive.keras import DVCLiveCallback
+# from dvclive.keras import DVCLiveCallback
 from sklearn.metrics import classification_report
 import pickle
 from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
@@ -38,6 +38,7 @@ from classifier.models import ModelArchs
 from classifier.plot import Plotter
 from classifier.preprocess import Preprocessor
 from classifier.utility import Utility
+from classifier.embeddings import MyEmbeddings, PretrainDataset
 
 
 class Classifier:
@@ -51,7 +52,6 @@ class Classifier:
     def __init__(self):
         self.util = Utility()
         self.config = self.util.load_config("config/classifier.yaml")
-        self.arch = ModelArchs(self.config)
 
         self.prepro = Preprocessor(self.config)
 
@@ -59,6 +59,7 @@ class Classifier:
         """create model dir to store it
          set the config args from the command line if provided """
         self.config["model"]["name"] = paras.model if paras.model else self.config["model"]["name"]
+        self.config['model']['type'] = paras.type if paras.type else self.config["model"]["type"]
         self.config["data_file"] = paras.data if paras.data else self.config["data_file"]
 
         if self.config['debug']:
@@ -107,38 +108,71 @@ class Classifier:
         ]
         return tf_callbacks
 
-    def select_model_arch(self):
+    def select_model_arch(self, params=None):
         """Choose ML model"""
         model_name = self.config["model"]["name"]
         print("\n\n" + "=" * 25 + " " + model_name +
               " Model Training " + "=" * 25)
         print("-" * 50)
 
-        if model_name == "RNN":
-            model = self.arch.apply_RNN()
-        elif model_name == "CNN":
-            model = self.arch.apply_CNN()
-        elif model_name == "LSTM":
-            model = self.arch.apply_LSTM()
-        # elif model_name == "RF":
-        #     model = self.arch.apply_RF(input_data)
-        elif model_name == "multiDNN":
-            model = self.arch.apply_multiDNN()
-        elif model_name == "DNN":
-            model = self.arch.apply_DNN()
-        else:
-            print("Invalid model! Please select a valid model!")
-            exit(1)
+        self.arch = ModelArchs(self.config)
+
+        # ## statement-level granularity training
+        if self.config['granular'] == 'statement':
+            if model_name == "RNN":
+                model = self.arch.apply_RNN()
+            elif model_name == "CNN":
+                model = self.arch.apply_CNN()
+            elif model_name == "LSTM":
+                model = self.arch.apply_LSTM()
+            # elif model_name == "RF":
+            #     model = self.arch.apply_RF(input_data)
+            elif model_name == "multiDNN":
+                model = self.arch.apply_multiDNN()
+            elif model_name == "DNN":
+                model = self.arch.apply_DNN()
+            else:
+                print("Invalid model! Please select a valid model!")
+                exit(1)
+
+        elif self.config['granular'] == 'function':
+            # ## function-level granularity training
+            vocab_size = params['vocab_size']
+            embedding_matrix = params['embedding_matrix']
+            max_len = params['max_len']
+
+            if model_name == 'CNN':
+                model = self.arch.apply_funCNN(
+                    vocab_size=vocab_size,
+                    embedding_matrix=embedding_matrix,
+                    MAX_LEN=max_len,
+                )
+            elif model_name == 'RNN':
+                model = self.arch.apply_funRNN(
+                    vocab_size=vocab_size,
+                    embedding_matrix=embedding_matrix,
+                    MAX_LEN=max_len,
+                )
+            elif model_name == 'LSTM':
+                model = self.arch.apply_funLSTM(
+                    vocab_size=vocab_size,
+                    embedding_matrix=embedding_matrix,
+                    MAX_LEN=max_len,
+                )
+            else:
+                print("Invalid model! Please select a valid model!\n" +
+                      "Select one of CNN, RNN, or LSTM model")
+                exit(1)
         return model
 
-    def train_model(self, model_file, X_train, y_train, X_test, y_test):
+    def train_model(self, model_file, X_train, y_train, X_test, y_test, params=None):
         """train the selected model"""
         model_name = self.config["model"]["name"]
         epochs = self.config["dnn"]["epochs"]
 
         if model_name != "RF":
             # Select the model architecture
-            model = self.select_model_arch()
+            model = self.select_model_arch(params)
             # store metadata to neptune.ai
             if self.config["model"]["use_neptune"] is True:
                 from neptune.integrations.tensorflow_keras import NeptuneCallback
@@ -175,11 +209,11 @@ class Classifier:
             # Apply callbacks for training to store the best model checkpoint
             # and apply early stopping.
             history = model.fit(
-                x=X_train,
-                y=y_train,
+                x=X_train.tolist(),
+                y=y_train.tolist(),
                 epochs=epochs,
                 batch_size=self.config["dnn"]["batch"],
-                validation_data=(X_test, y_test),
+                validation_data=(X_test.tolist(), y_test.tolist()),
                 verbose=1,
                 callbacks=[tf_callbacks],
                 # use_multiprocessing=True,
@@ -199,6 +233,7 @@ class Classifier:
         else:
             # TODO: log non-DNN models output to Neptune
             # Fitting
+            self.arch = ModelArchs(self.config)
             model = self.arch.apply_RF(input_data=X_train)
             model.fit(X_train, y_train)
             acc = model.score(X_test, y_test)
@@ -210,17 +245,17 @@ class Classifier:
     # reconstruct labels from y_pred
     def reconstruct_labels(self, y_eval, y_pred):
         """Reconstruct labels from y_pred"""
-        y_pred_np = np.argmax(y_pred, axis=1)
-        print(f'y_pred_numpy: \n{y_pred_np}')
 
-        y_pred = (y_pred > 0.5).astype('int32')
+        if self.config['model']['type'] == 'binary':
+            y_pred = (y_pred > 0.5).astype('int32')
 
         y_eval = self.prepro.decode_multiclass(y_eval)
         y_pred = self.prepro.decode_multiclass(y_pred)
 
         print('+'*40)
-        print(f'\n\ny_eval targets: \n{pd.value_counts(list(y_eval))}')
-        print(f'\n\ny_pred targets: \n{pd.value_counts(list(y_pred))}')
+        print(f'y_eval targets: \n{pd.value_counts(list(y_eval))}')
+        print(f'\ny_pred targets: \n{pd.value_counts(list(y_pred))}')
+        print("Evaluation labels shape", np.shape(y_eval))
         print('+'*40)
         print(classification_report(y_eval, y_pred))
         return y_pred
@@ -246,9 +281,6 @@ class Classifier:
             # predict the model
             y_pred = model.predict(X_eval)
             self.reconstruct_labels(y_eval, y_pred)
-            # else:
-            #     print(f"\n\nModel file: {model} not found!")
-            #     print("Please train the model first!")
         else:
             result = model.score(X_eval, y_eval)
             print("Result: ", result)
@@ -262,34 +294,51 @@ class Classifier:
                             help="Name of the ML model to train/test.")
         parser.add_argument("--data", type=str,
                             help="Data file for train/test.")
+        parser.add_argument("--type", type=str,
+                            help="Classification type for train/test.")
         return parser.parse_args()
 
     def run(self):
         """Run the training and testing process"""
         paras = self.parse_args()
+        print(f'\n\nCommand arguments: {paras}')
+
         if self.config["model"]["name"] == "RF":
             assert self.config['train'] is True, \
                 'The model should be trained first for non-DNN models!'
 
         # update config args
         self.config = self.update_config_args(paras=paras)
-        print('-'*40)
-        print('\nStarting training and testing with configuration:\n',
-              self.config)
+        fun_params = {}  # for fun-level training
 
+        print('-'*40)
         # load the preprocessor
         model_file = self.config["model"]["path"] + "model-final.h5"
 
-        # Load input data
         df = self.prepro.load_data(data_file=self.config["data_file"])
 
-        # Split the dataset
-        X_train, X_test, y_train, y_test = self.prepro.split_data(df)
+        if self.config['granular'] == 'function':
+            # apply embeddings if granular level is function
+            emb = MyEmbeddings(self.config)
+
+            X, y, vocab_size, embedding_matrix = emb.vectorize_and_load_fun_data(
+                df)
+            # create dataframe from X, y
+            df = pd.DataFrame({'code': X.tolist(), 'label': y.tolist()})
+
+            # fill other_params
+            fun_params['vocab_size'] = vocab_size
+            fun_params['embedding_matrix'] = embedding_matrix
+            fun_params['max_len'] = self.config['embedding']['max_len']
+
+        # split data
+        X_train, X_test, y_train, y_test = self.prepro.process_data(df)
 
         # Train the model
         if self.config['train']:
             model = self.train_model(
-                model_file, X_train, y_train, X_test, y_test)
+                model_file, X_train, y_train, X_test, y_test,
+                params=fun_params)
 
             # save the trained model
             self.prepro.save_model(model, model_file)
@@ -297,18 +346,23 @@ class Classifier:
         # Evaluation of the trained model
         if self.config["eval"]:
             # load the trained model for evaluation
-            # df_eval = self.prepro.load_data(
-            #     data_file=self.config["eval_data"])
+            df_eval = self.prepro.load_data(
+                data_file=self.config["eval_data"])
 
             if self.config["model"]["name"] != "RF":
-                # X_eval, y_eval = self.prepro.tokenize_data(
-                #     df=df_eval, max_len=self.config["preprocess"]["max_len"])
+                if self.config['granular'] == 'function':
+                    # apply embeddings if granular level is function
+                    emb = MyEmbeddings(self.config)
+
+                    X_eval, y_eval, _, _ = emb.vectorize_and_load_fun_data(df)
+                if self.config['granular'] == 'statement':
+                    X_eval, y_eval = self.prepro.tokenize_data(
+                        df=df_eval, max_len=self.config["preprocess"]["max_len"])
+                else:
+                    print('Select a valid granularity level: statement or function!')
 
                 # self.evaluate_model(model_file, X_eval, y_eval)
-                self.evaluate_model(model, X_test, y_test)
-            # else:
-            #     X_eval, y_eval = df_eval.code, df_eval.label
-            #     self.evaluate_model(model, X_eval, y_eval)
+                self.evaluate_model(model, X_eval.tolist(), y_eval.tolist())
 
 
 if __name__ == "__main__":

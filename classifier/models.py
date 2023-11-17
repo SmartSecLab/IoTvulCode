@@ -59,42 +59,54 @@ warnings.filterwarnings("ignore")
 
 class ModelArchs:
     def __init__(self, config):
+        """Initialize the class with available settings
+        Args:
+            config (_dict_): configuration settings
+        """
+        self.config = config
 
         # function arguments:
-        self.max_len = config["preprocess"]["max_len"]
-        self.classify_type = str(config['model']['type']).lower()
+        self.max_len = self.config["preprocess"]["max_len"]
+        self.classify_type = str(self.config['model']['type']).lower()
 
         # DNN arguments:
-        self.input_length = config["dnn"]["input_length"]
-        self.input_dim = config["dnn"]["input_dim"]
-        self.output_dim = config["dnn"]["output_dim"]
-        self.emb_dim = config["dnn"]["output_dim"]
-        self.max_vocab_len = config["preprocess"]["max_vocab_len"]
-        self.dropout = config["dnn"]["dropout"]
-        self.recur_dropout = config["dnn"]["recur_dropout"]
+        self.input_length = self.config["dnn"]["input_length"]
+        self.input_dim = self.config["dnn"]["input_dim"]
+        self.emb_dim = self.config["dnn"]["output_dim"]
+        self.max_vocab_len = self.config["preprocess"]["max_vocab_len"]
+        self.dropout = self.config["dnn"]["dropout"]
+        self.recur_dropout = self.config["dnn"]["recur_dropout"]
 
         # Optimizer arguments:
-        self.optimizer = config["dnn"]["optimizer"]  # adam
-        self.learn_rate = config["dnn"]["lr"]
-        self.beta_1 = config["dnn"]["beta_1"]
-        self.beta_2 = config["dnn"]["beta_2"]
-        self.epsilon = float(config["dnn"]["epsilon"])
-        self.decay = config["dnn"]["decay"]
+        self.optimizer = self.config["dnn"]["optimizer"]  # adam
+        self.learn_rate = self.config["dnn"]["lr"]
+        self.beta_1 = self.config["dnn"]["beta_1"]
+        self.beta_2 = self.config["dnn"]["beta_2"]
+        self.epsilon = float(self.config["dnn"]["epsilon"])
+        self.decay = self.config["dnn"]["decay"]
 
         if self.classify_type == 'binary':
-            self.loss = config["dnn"]["loss_binary"]
-        elif self.classify_type == 'multiclass':
-            self.loss = config["dnn"]["loss_multiclass"]
-            self.classes_len = 10
+            self.loss = self.config["dnn"]["loss_binary"]
+            self.activ_last_layer = 'sigmoid'
 
+        elif self.classify_type == 'multiclass':
+            self.loss = self.config["dnn"]["loss_multiclass"]
+            self.activ_last_layer = 'softmax'
+        else:
+            raise ValueError(
+                f"Invalid classification type: {self.classify_type}")
+
+        self.output_dim = self.config["dnn"]["output_dim"]
+
+        print(f'\n\nConfigurations: {self.config}')
         # Metrics
         self.metrics = [
             "acc",
-            # tf.keras.metrics.Recall(),
-            # tf.keras.metrics.Precision(),
-            # tf.keras.metrics.AUC(),
+            tf.keras.metrics.Recall(),
+            tf.keras.metrics.Precision(),
+            tf.keras.metrics.AUC(),
         ]
-        print(self.metrics)
+        print(f'\nPerformance metrics: {self.metrics}')
         print("-" * 50)
 
     def optimize_model(self, model):
@@ -114,7 +126,7 @@ class ModelArchs:
 
     def apply_RNN(self):
         """
-        RNN Model for Binary Classification
+        RNN Model for Binary and Multiclass Classification
         """
         # Main Input
         # main_input = Input(shape=(self.max_len,), dtype="int32")
@@ -155,12 +167,10 @@ class ModelArchs:
         emb_layer = Dense(self.input_dim/4, activation="tanh")(emb_layer)
 
         # output layer
-        if self.classify_type == 'binary':
-            emb_layer = Dense(1, activation="sigmoid",
-                              name='RNN-network')(emb_layer)
-        else:
-            emb_layer = Dense(1, activation="sigmoid",
-                              name='RNN-network')(emb_layer)
+        emb_layer = Dense(
+            self.output_dim,
+            activation=self.activ_last_layer,
+        )(emb_layer)
 
         # apply RNN model settings
         model = Model(inputs=main_input, outputs=emb_layer)
@@ -169,46 +179,43 @@ class ModelArchs:
         model = self.optimize_model(model)
         return model
 
-    # def apply_RNN(self):
-    #     inputs = Input(shape=(self.max_len,))
-    #     sharable_embedding = Embedding(self.input_dim,
-    #                                    output_dim=32,
-    #                                    #    weights=[embedding_matrix],
-    #                                    input_length=self.max_len,
-    #                                    #    trainable=self.embedding_trainable
-    #                                    )(inputs)
-    #     dense = Flatten()(sharable_embedding)
-    #     dense = Dense(self.input_dim,
-    #                   activation='tanh')(dense)
-
-    #     # dense = Dense(self.input_dim,
-    #     #               activation='tanh')(dense)
-
-    #     # dense = Dense(int(self.input_dim / 2),
-    #     #               activation='tanh')(dense)
-    #     rnn_out = LSTM(units=64, dropout=0.2, recurrent_dropout=0.2)
-
-    #     dense = Dense(int(self.input_dim / 4))(rnn_out)
-    #     dense = Dense(1, activation='sigmoid')(dense)
-
-    #     model = Model(inputs=inputs, outputs=dense, name='RNN_network')
-    #     #     # apply optimizer
-    #     model = self.optimize_model(model)
-    #     return model
+    # define apply_funRNN function
+    def apply_funRNN(self, vocab_size: int, embedding_matrix, MAX_LEN: int):
+        """Define the RNN model"""
+        model = Sequential()
+        model.add(Embedding(
+            vocab_size, MAX_LEN,
+            weights=[embedding_matrix],
+            input_length=MAX_LEN,
+            trainable=False))
+        model.add(SimpleRNN(128, dropout=0.2, recurrent_dropout=0.2))
+        model.add(Dropout(self.dropout))
+        model.add(Dense(self.output_dim,
+                  activation=self.activ_last_layer,))
+        model = self.optimize_model(model)
+        return model
 
     # baseline
     def apply_DNN(self):
+        """
+        DNN Model for Binary and Multiclass Classification
+        """
         # create model
         model = Sequential()
         model.add(Dense(self.max_len, input_shape=(
             self.max_len,), activation='sigmoid'))
         model.add(Dense(self.max_len/4,  activation='sigmoid'))
         model.add(Dropout(0.0002))
-        model.add(Dense(1, activation='sigmoid'))
+
+        # output layer
+        print(f'Output dim from model: {self.output_dim}')
+        model.add(
+            Dense(self.output_dim,
+                  activation=self.activ_last_layer))
 
         # Compile model
         sgd = SGD(learning_rate=0.001, momentum=0.9)
-        model.compile(loss='binary_crossentropy',
+        model.compile(loss=self.loss,
                       optimizer=sgd,
                       metrics=['acc']
                       )
@@ -283,20 +290,33 @@ class ModelArchs:
                         name="output")(hidden2)
 
         # output layer
-        if self.classify_type == 'binary':
-            output = Dense(1, activation="sigmoid",
-                           name='CNN-network')(hidden2)
-        else:
-            output = Dense(1, activation="softmax",
-                           name='CNN-network')(hidden2)
+
+        output = Dense(self.output_dim,
+                       activation=self.activ_last_layer)(hidden2)
 
         # Compile model
         model = Model(inputs=[main_input], outputs=[output])
 
-        # # CNN Model Settings and define optimizer #TODO check this
-        # model = Model(inputs=main_input, outputs=[emb_layer])
-
         # apply optimizer
+        model = self.optimize_model(model)
+        return model
+
+    def apply_funCNN(self, vocab_size: int, embedding_matrix, MAX_LEN: int):
+        """Define the CNN model"""
+        model = Sequential()
+        model.add(Embedding(
+            vocab_size, MAX_LEN,
+            weights=[embedding_matrix],
+            input_length=MAX_LEN,
+            trainable=False))
+        model.add(Convolution1D(128, 5, activation='relu'))
+        model.add(MaxPooling1D(5))
+        model.add(Convolution1D(128, 5, activation='relu'))
+        model.add(MaxPooling1D(5))
+        model.add(Flatten())
+        model.add(Dense(64, activation='relu'))
+        model.add(Dense(self.output_dim,
+                  activation=self.activ_last_layer,))
         model = self.optimize_model(model)
         return model
 
@@ -321,8 +341,24 @@ class ModelArchs:
         model.add(Dropout(self.dropout))
         model.add(Dense(self.output_dim, activation="softmax"))
         # output layer
-        model.add(Dense(1, activation="sigmoid"))
+        model.add(Dense(self.output_dim,
+                  activation=self.activ_last_layer,))
         # apply optimizer
+        model = self.optimize_model(model)
+        return model
+
+    def apply_funLSTM(self, vocab_size: int, embedding_matrix, MAX_LEN: int):
+        """Define the LSTM model"""
+        model = Sequential()
+        model.add(Embedding(
+            vocab_size, MAX_LEN,
+            weights=[embedding_matrix],
+            input_length=MAX_LEN,
+            trainable=False))
+        model.add(LSTM(128, dropout=0.2, recurrent_dropouts=0.2))
+        model.add(Dropout(self.dropout))
+        model.add(Dense(self.output_dim,
+                  activation=self.activ_last_layer,))
         model = self.optimize_model(model)
         return model
 
@@ -340,7 +376,8 @@ class ModelArchs:
         model.add(Dropout(0.2))
         model.add(Dense(self.output_dim, activation="softmax"))
         # output layer
-        model.add(Dense(1, activation="sigmoid"))
+        model.add(Dense(self.output_dim,
+                        activation=self.activ_last_layer,))
 
         # apply optimizer
         model = self.optimize_model(model)

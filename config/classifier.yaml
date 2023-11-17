@@ -1,6 +1,9 @@
 # data_file: "data/iDetect_refine/DNN-binary.csv"
 # data_file: data/iDetect_refine/DNN-multiclass.csv
-data_file: data/TinyVul-v2-statement-multiclass.csv
+# data_file: data/TinyVul-v2-statement-multiclass.csv
+data_file: data/TinyVul-v2-function-binary.csv
+granular: statement
+vectorized_data: VulBERTa/data/dummy/data.pkl
 result_dir: result/
 apply_balancer: False # True if you want to apply the classes' balancer
 train: True
@@ -8,7 +11,7 @@ test: True
 eval: True
 eval_data: data/iDetect_refine/DNN-binary.csv
 debug: True # mode: turn debugging mode True for preprocessing on debug_rows
-debug_rows: 100000
+debug_rows: 5000
 
 preprocess:
   raw_dir: data/raw
@@ -21,7 +24,7 @@ preprocess:
 model: # settings for training and testing experiments
   seed: 30 # seed for reproduciability to generate same set of samples
   type: binary # binary or multiclass
-  name: DNN # RNN, LSTM, CNN or RF - RandomForest, multiDNN
+  name: RNN # RNN, LSTM, CNN or RF - RandomForest, multiDNN, DNN
   k-fold: 20 # number of cross-validation folds
   split_ratio: 0.30 # ratio of training and testing ratio
   path: result/
@@ -29,12 +32,12 @@ model: # settings for training and testing experiments
   use_neptune: False # switch between enabling neptune usage or not
 
 dnn:
-  epochs: 3 # default iDetect 800
-  debug_epochs: 10 # incase just bubugging the code, running or not
+  epochs: 20 # default iDetect 800
+  debug_epochs: 2 # incase just bubugging the code, running or not
   batch: 128 # 64 iDetect
   input_length: 150 # max input sequence length
   input_dim: 150
-  output_dim: 32
+  output_dim: 32 # dynamic based on the target values
   lr: 1e-3 # original 1e-4
   patience: 35
   optimizer: adam # optimizer can be adam or sgd or any other
@@ -49,3 +52,15 @@ dnn:
   # loss_multiclass: sparse_categorical_crossentropy
   loss_multiclass: categorical_crossentropy # for multiclass
   loss_binary: binary_crossentropy #for binary classification.
+
+embedding:
+  path: VulBERTa/data/dummy/
+  word2vec_file: w2v_model.txt
+  vocab_size: 456 # applied dynamic based on input data
+  max_len: 1024
+  embedding_dim: 100
+  input_files: [
+      "VulBERTa/data/dummy/models.py",
+      # "VulBERTa/data/vulberta/tokenizer/drapgh.txt",
+    ] # list of input files
+  embedding_size: 150 # size of each dimension
