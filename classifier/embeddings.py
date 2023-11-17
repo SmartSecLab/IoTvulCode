@@ -81,7 +81,7 @@ class MyTokenizer:
 
 class PretrainDataset():
     def __init__(self, custom_tokenizer, dataX, max_len):
-        print('Tokenizing the data...')
+        print('Tokenizing the given data...')
         my_tokenizer = custom_tokenizer
         my_tokenizer.enable_truncation(max_length=max_len)
         # or use the RobertaTokenizer from `transformers` directly.
@@ -100,7 +100,8 @@ class PretrainDataset():
         # mydata = pd.read_pickle('data/vulberta/pretrain/drapgh.pkl')
         dataX['code'] = dataX['code'].apply(cleaner)
         # mydata.functionSource = mydata.functionSource.apply(cleaner)
-        dataX = dataX.sample(frac=1)
+        # disable below line it suffles rows
+        # dataX = dataX.sample(frac=1)
         dataX = dataX['code']
         # lines = src_file.read_text(encoding="utf-8").splitlines()
         self.examples += [
@@ -121,13 +122,11 @@ class MyEmbeddings():
         self.emb_path = self.config['embedding']['path']
         self.w2v_file = self.emb_path + \
             self.config['embedding']['word2vec_file']
-        self.tokenizer_path = self.config['embedding']['path']
-        self.w2v_file = self.config['embedding']['word2vec_file']
+        self.emb_input_files = self.config['embedding']['input_files']
+        self.vocab_file = self.emb_path + 'tokenizer.json'
+
         self.vocab_size = self.config['embedding']['vocab_size']
         self.max_len = self.config['embedding']['max_len']
-
-        self.emb_files = self.config['embedding']['input_files']
-        self.vocab_file = self.tokenizer_path + 'tokenizer.json'
 
     def init_tokenizer(self):
         """Init new tokenizer"""
@@ -154,7 +153,7 @@ class MyEmbeddings():
         """Train tokenizer"""
         print('='*40)
         # check all input_files exist
-        for file in self.emb_files:
+        for file in self.emb_input_files:
             if not Path(file).exists():
                 print(f'\nFile not found: {file}')
                 exit(0)
@@ -173,10 +172,10 @@ class MyEmbeddings():
             tokenizer.train(input_files, trainer)
             tokenizer.save(self.vocab_file)
             # use this to get vocab.json and merges.txt both
-            # tokenizer.model.save(tokenizer_path)
-            # tokenizer.model.save_pretrained(tokenizer_path)
+            # tokenizer.model.save(self.emb_path)
+            # tokenizer.model.save_pretrained(self.emb_path)
             # trainer.save_pretrained(trainer)
-            print(f'Trained tokenizer is saved at {self.tokenizer_path}')
+            print(f'Trained tokenizer is saved at {self.emb_path}')
         tokenizer.pre_tokenizer = PreTokenizer.custom(MyTokenizer())
         print('='*40)
         return tokenizer
@@ -246,6 +245,7 @@ class MyEmbeddings():
                              emb_dim):
         """function to generate embedding_matrix from embedding_index"""
         emb_matrix_file = self.emb_path + 'embedding_matrix.npy'
+        print('='*40)
         if Path(emb_matrix_file).exists():
             print(f"Embedding matrix already exists at: {emb_matrix_file}")
             embedding_matrix = np.load(emb_matrix_file)
@@ -268,12 +268,18 @@ class MyEmbeddings():
             print('Embedding matrix generated!')
             # save embedding_matrix
             np.save(emb_matrix_file, embedding_matrix)
+            print(f'Embedding matrix saved at: {emb_matrix_file}')
+        print('='*40)
         return embedding_matrix
 
     def vectorize_and_load_fun_data(self, df):
         """convert the functions into vectorized form"""
+        print('='*40)
         prepro = Preprocessor(self.config)
-        vectorized_data = self.config['vectorized_data']
+
+        # vectorized data file based on data_file csv
+        vectorized_data = f"{self.config['data_file'].split('.csv')[0]}_vectorized.pkl"
+        # vectorized_data = self.config['vectorized_data']
 
         emb = MyEmbeddings(self.config)
         my_tokenizer = emb.init_tokenizer()
@@ -281,7 +287,7 @@ class MyEmbeddings():
         my_tokenizer = emb.train_tokenizer(
             tokenizer=my_tokenizer,
             input_files=self.config['embedding']['input_files'],
-            # tokenizer_path=emb_path,
+            # emb_path=self.emb_path,
         )
         # load already processed andvectorized data to skip preprocessing
         if Path(vectorized_data).exists() and Path(self.w2v_file).exists():
@@ -312,4 +318,5 @@ class MyEmbeddings():
             num_words=len(word_index) + 1,
             emb_dim=self.max_len
         )
+        print('='*40)
         return X, y, vocab_size, embedding_matrix

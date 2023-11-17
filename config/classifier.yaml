@@ -1,15 +1,15 @@
 # data_file: "data/iDetect_refine/DNN-binary.csv"
 # data_file: data/iDetect_refine/DNN-multiclass.csv
 # data_file: data/TinyVul-v2-statement-multiclass.csv
-data_file: data/TinyVul-v2-function-binary.csv
+data_file: data/tinyvul/TinyVul-v2-function.csv
 granular: statement
 vectorized_data: VulBERTa/data/dummy/data.pkl
 result_dir: result/
 apply_balancer: False # True if you want to apply the classes' balancer
 train: True
 test: True
-eval: True
-eval_data: data/iDetect_refine/DNN-binary.csv
+eval: False
+eval_data: data/iDetect_refine/DNN-binary.csv # for statement
 debug: True # mode: turn debugging mode True for preprocessing on debug_rows
 debug_rows: 5000
 
@@ -54,7 +54,7 @@ dnn:
   loss_binary: binary_crossentropy #for binary classification.
 
 embedding:
-  path: VulBERTa/data/dummy/
+  path: data/embeddings/
   word2vec_file: w2v_model.txt
   vocab_size: 456 # applied dynamic based on input data
   max_len: 1024

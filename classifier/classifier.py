@@ -40,6 +40,9 @@ from classifier.preprocess import Preprocessor
 from classifier.utility import Utility
 from classifier.embeddings import MyEmbeddings, PretrainDataset
 
+warnings.filterwarnings("ignore")
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 
 class Classifier:
     """ This class is responsible for the following:
@@ -61,6 +64,7 @@ class Classifier:
         self.config["model"]["name"] = paras.model if paras.model else self.config["model"]["name"]
         self.config['model']['type'] = paras.type if paras.type else self.config["model"]["type"]
         self.config["data_file"] = paras.data if paras.data else self.config["data_file"]
+        self.config['granular'] = paras.granular if paras.granular else self.config['granular']
 
         if self.config['debug']:
             self.config['dnn']['epochs'] = self.config['dnn']['debug_epochs']
@@ -278,9 +282,9 @@ class Classifier:
             print('\nDone evaluation!\n')
             print('='*40)
 
-            # predict the model
-            y_pred = model.predict(X_eval)
-            self.reconstruct_labels(y_eval, y_pred)
+            # # predict the model
+            # y_pred = model.predict(X_eval)
+            # self.reconstruct_labels(y_eval, y_pred)
         else:
             result = model.score(X_eval, y_eval)
             print("Result: ", result)
@@ -296,10 +300,14 @@ class Classifier:
                             help="Data file for train/test.")
         parser.add_argument("--type", type=str,
                             help="Classification type for train/test.")
+        # get granular param
+        parser.add_argument("--granular", type=str,
+                            help="Granularity level for training.")
         return parser.parse_args()
 
     def run(self):
         """Run the training and testing process"""
+        import json
         paras = self.parse_args()
         print(f'\n\nCommand arguments: {paras}')
 
@@ -309,6 +317,7 @@ class Classifier:
 
         # update config args
         self.config = self.update_config_args(paras=paras)
+        print(f"\nUpdated Config:\n{json.dumps(self.config, indent=2)}\n")
         fun_params = {}  # for fun-level training
 
         print('-'*40)

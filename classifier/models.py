@@ -213,12 +213,9 @@ class ModelArchs:
             Dense(self.output_dim,
                   activation=self.activ_last_layer))
 
-        # Compile model
-        sgd = SGD(learning_rate=0.001, momentum=0.9)
-        model.compile(loss=self.loss,
-                      optimizer=sgd,
-                      metrics=['acc']
-                      )
+        model.add(Dense(self.output_dim,
+                  activation=self.activ_last_layer,))
+        model = self.optimize_model(model)
         return model
 
     def apply_CNN(self):
@@ -328,7 +325,7 @@ class ModelArchs:
         # First LSTM layer defining the input sequence length
         model.add(
             LSTM(input_shape=(self.input_dim, 1),
-                 units=32, return_sequences=True)
+                 units=128, return_sequences=True)
         )
         model.add(Dropout(self.dropout))
 
@@ -337,7 +334,7 @@ class ModelArchs:
         model.add(Dropout(self.dropout))
 
         # Third LSTM layer with 100 units
-        model.add(LSTM(units=150, return_sequences=False))
+        model.add(LSTM(units=128, return_sequences=False))
         model.add(Dropout(self.dropout))
         model.add(Dense(self.output_dim, activation="softmax"))
         # output layer
@@ -347,6 +344,7 @@ class ModelArchs:
         model = self.optimize_model(model)
         return model
 
+    # define multilayers LSTM model for function
     def apply_funLSTM(self, vocab_size: int, embedding_matrix, MAX_LEN: int):
         """Define the LSTM model"""
         model = Sequential()
@@ -355,10 +353,22 @@ class ModelArchs:
             weights=[embedding_matrix],
             input_length=MAX_LEN,
             trainable=False))
-        model.add(LSTM(128, dropout=0.2, recurrent_dropouts=0.2))
+        model.add(LSTM(input_shape=(self.input_dim, 1),
+                       units=MAX_LEN/2, return_sequences=True))
         model.add(Dropout(self.dropout))
+
+        # Second LSTM layer with 128 units
+        model.add(LSTM(units=MAX_LEN/4, return_sequences=True))
+        model.add(Dropout(self.dropout))
+
+        # Third LSTM layer with 100 units
+        model.add(LSTM(units=128, return_sequences=False))
+        model.add(Dropout(self.dropout))
+        model.add(Dense(self.output_dim, activation="softmax"))
+        # output layer
         model.add(Dense(self.output_dim,
                   activation=self.activ_last_layer,))
+        # apply optimizer
         model = self.optimize_model(model)
         return model
 
@@ -378,7 +388,6 @@ class ModelArchs:
         # output layer
         model.add(Dense(self.output_dim,
                         activation=self.activ_last_layer,))
-
         # apply optimizer
         model = self.optimize_model(model)
         return model

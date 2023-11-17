@@ -231,7 +231,7 @@ class Preprocessor():
         X_train, X_test, y_train, y_test = train_test_split(
             X, y,
             test_size=self.config["model"]["split_ratio"],
-            # random_state=self.config["model"]["seed"],
+            random_state=self.config["model"]["seed"],
         )
         print(f"\nTrain data; X: {X_train.shape}, y{y_train.shape}")
         print(f"Test data; X: {X_test.shape}, y: {y_test.shape}")
@@ -244,6 +244,9 @@ class Preprocessor():
                 model.save(model_file)
             else:
                 sio.dumps(model_file)
+        print('='*40)
+        print(f'Model saved to {model_file}')
+        print('='*40)
 
     def save_model_idetect(self, model, model_json, file_weights):
         """Saving model to disk"""
