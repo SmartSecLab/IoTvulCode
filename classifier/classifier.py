@@ -10,27 +10,18 @@ Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smar
 @Programmer: Guru Bhandari
 """
 
-import pickle
 import warnings
 from argparse import ArgumentParser
-from configparser import ConfigParser
 from pathlib import Path
 from datetime import datetime
-from sklearn import model_selection
 import numpy as np
 
 # from string import printable
 import pandas as pd
 import tensorflow as tf
-import yaml
 import os
-import errno
 # from dvclive.keras import DVCLiveCallback
 from sklearn.metrics import classification_report
-import pickle
-from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
-from sklearn.utils import class_weight
-from tabulate import tabulate
 
 
 # custom modules
@@ -38,7 +29,7 @@ from classifier.models import ModelArchs
 from classifier.plot import Plotter
 from classifier.preprocess import Preprocessor
 from classifier.utility import Utility
-from classifier.embeddings import MyEmbeddings, PretrainDataset
+from classifier.embeddings import MyEmbeddings
 
 warnings.filterwarnings("ignore")
 os.environ["TOKENIZERS_PARALLELISM"] = "false"

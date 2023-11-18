@@ -2,30 +2,12 @@
 """
 grepping function from the given file of the code.
 """
-import ctypes
-import difflib
 import itertools
-import os
 import random
-import stat
 import subprocess
-import subprocess as sub
-import sys
-import tempfile
-import time
-import xml.etree.ElementTree as et
-from io import BytesIO, StringIO
-from pathlib import Path
-from zipfile import ZipFile
 
-import lizard
 import pandas as pd
-import requests
-import tqdm
-import yaml
-from humanfriendly import format_timespan
 from lxml import etree
-from pylibsrcml import srcml
 
 
 class FunsCollector:

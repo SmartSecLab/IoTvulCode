@@ -4,26 +4,15 @@ Grepping functions from the vulnerability context of the file.
 Fetching the functions which have given line context/statement.
 """
 
-import csv
 import os
-import shutil
 import subprocess as sub
-import sys
-import time
 import xml.etree.ElementTree as et
-from io import BytesIO, StringIO
+from io import StringIO
 from pathlib import Path
 from threading import Timer
 
-import lizard
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import seaborn as sns
-import yaml
-from pylibsrcml import srcml
-from tabulate import tabulate
 
 from extractor.utility import Utility
 

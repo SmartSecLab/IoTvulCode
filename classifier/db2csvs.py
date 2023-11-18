@@ -1,8 +1,6 @@
 import pandas as pd
 from sqlite3 import connect
 from pathlib import Path
-import ruamel
-import sys
 from argparse import ArgumentParser
 
 

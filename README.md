@@ -13,11 +13,15 @@ The proposed method for vulnerability data collection is as follows:
 
 ![framework](figure/framework.jpg?raw=true "The proposed framework for vulnerability data collection")
 
+Follow the IoT vulnerability dataset extraction instruction [here](extractor/README.md)
+
 ## ML method for IoT vulnerability detection:
 
 The novel vulnerability detection approach in IoT OSs and applications:
 
 ![framework](figure/MLframework.jpg?raw=true "The proposed method for vulnerability detection in IoT OSs and applications")
+
+Follow the vulnerability classification instruction [here](classifier/README.md)
 
 # Software Dependencies:
 

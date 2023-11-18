@@ -12,9 +12,7 @@ import time
 from pathlib import Path
 
 import pandas as pd
-# import time
 from humanfriendly import format_timespan
-# from pylibsrcml import srcml
 from tabulate import tabulate
 
 # User defined modules

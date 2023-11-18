@@ -4,9 +4,6 @@ You may use, distribute and modify this code under the
 terms of the MIT license.
 You should have received a copy of the MIT license with
 this file. If not, please write to: https://opensource.org/licenses/MIT
-
-Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smart Environments 
-(funded from the European Union’s Horizon 2020, NGI-POINTER under grant agreement No 871528).
 @Programmer: Guru Bhandari
 """
 
@@ -15,7 +12,6 @@ import os
 from pathlib import Path
 from string import printable
 import pickle
-import _pickle as cPickle
 import skops.io as sio
 from tabulate import tabulate
 import tensorflow as tf
@@ -24,10 +20,9 @@ import errno
 
 import numpy as np
 import pandas as pd
-import yaml
 from sklearn.model_selection import train_test_split
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from sklearn.preprocessing import LabelEncoder, MultiLabelBinarizer
+from sklearn.preprocessing import LabelEncoder
 
 
 # import RandomOverSampler

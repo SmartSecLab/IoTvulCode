@@ -1,21 +1,14 @@
-import pickle
 import re
 from typing import List
 import numpy as np
-import pandas as pd
 import torch
-# from clang import *
 from clang import cindex
-# from gensim.models import Word2Vec
 from gensim.models.word2vec import Word2Vec
 from gensim.models import KeyedVectors
-# from gensim.utils import simple_preprocess
 from pathlib import Path
 from tokenizers import (NormalizedString, PreTokenizedString, Tokenizer,
                         normalizers, processors)
 from tensorflow.keras.preprocessing.sequence import pad_sequences
-from tensorflow.keras.layers import Embedding, Conv1D, MaxPooling1D, Flatten, Dense
-from tensorflow.keras.models import Sequential
 
 from tokenizers.models import BPE
 from tokenizers.normalizers import (Replace, StripAccents)
@@ -24,13 +17,9 @@ from tokenizers.processors import TemplateProcessing
 from tokenizers.trainers import BpeTrainer
 
 from tokenizers.pre_tokenizers import PreTokenizer
-from transformers import AutoTokenizer
-from transformers import PreTrainedTokenizerFast, AutoTokenizer
 from typing import List
 
 # custom modules
-from classifier.models import ModelArchs
-from classifier.utility import Utility
 from classifier.preprocess import Preprocessor
 
 

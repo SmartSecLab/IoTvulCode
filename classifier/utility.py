@@ -1,17 +1,10 @@
 # Analysis of IoTvulCode tool generated output for feeding non-vul statements:
 
-import os
-import random
-import re
-import time
 import warnings
 from configparser import ConfigParser
 from pathlib import Path
 
-import pandas as pd
-import requests
 import yaml
-from humanfriendly import format_timespan
 import tensorflow as tf
 
 warnings.filterwarnings("ignore")

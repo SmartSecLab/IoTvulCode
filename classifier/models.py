@@ -4,51 +4,26 @@ You may use, distribute and modify this code under the
 terms of the MIT license.
 You should have received a copy of the MIT license with
 this file. If not, please write to: https://opensource.org/licenses/MIT
-
-Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smart Environments 
-(funded from the European Union’s Horizon 2020, NGI-POINTER under grant agreement No 871528).
-@Developer: Guru Bhandari
 """
 
-import json
-import os
-import pickle
-import re
 import warnings
-from pathlib import Path
-from string import printable
 
-import joblib
 # import keras
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
-import skops.io as sio
 import tensorflow as tf
-from matplotlib import pyplot
 # import tensorflow_addons as tfa
-from nltk.tokenize.regexp import WhitespaceTokenizer
-from sklearn import model_selection
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics import classification_report, f1_score
-from sklearn.model_selection import KFold, RepeatedKFold, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 from tensorflow import keras
 from tensorflow.keras import backend as K
-from tensorflow.keras import regularizers
-from tensorflow.keras.callbacks import (EarlyStopping, ModelCheckpoint,
-                                        TensorBoard)
-from tensorflow.keras.layers import (ELU, LSTM, Activation, BatchNormalization,
-                                     Bidirectional, Convolution1D,
-                                     Convolution2D, Dense, Dropout, Embedding,
-                                     Flatten, Input, Lambda, MaxPooling1D,
-                                     MaxPooling2D, SimpleRNN, concatenate)
-from tensorflow.keras.models import (Model, Sequential, load_model,
-                                     model_from_json)
-from tensorflow.keras.optimizers import SGD, Adam, RMSprop
-from tensorflow.keras.preprocessing import sequence
+from tensorflow.keras.layers import (ELU, LSTM, BatchNormalization, Bidirectional,
+                                     Convolution1D, Dense,
+                                     Dropout, Embedding, Flatten, Input,
+                                     Lambda, MaxPooling1D, SimpleRNN, concatenate)
+from tensorflow.keras.models import (Model, Sequential)
+from tensorflow.keras.optimizers import Adam
 
 
 # from keras_metrics import metrics as km
