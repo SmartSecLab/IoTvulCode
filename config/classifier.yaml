@@ -8,6 +8,7 @@ result_dir: result/
 apply_balancer: False # True if you want to apply the classes' balancer
 train: True
 test: True
+
 eval: False
 eval_data: data/iDetect_refine/DNN-binary.csv # for statement
 debug: False # mode: turn debugging mode True for preprocessing on debug_rows
