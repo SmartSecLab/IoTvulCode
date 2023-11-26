@@ -11,7 +11,7 @@ The types of vulnerabilities in the presented dataset are linked to the Common W
 
 The proposed method for vulnerability data collection is as follows:
 
-![framework](figure/framework.jpg?raw=true "The proposed framework for vulnerability data collection")
+![framework](figure/framework.png?raw=true "The proposed framework for vulnerability data collection")
 
 Follow the IoT vulnerability dataset extraction instruction [here](extractor/README.md)
 
@@ -19,7 +19,7 @@ Follow the IoT vulnerability dataset extraction instruction [here](extractor/REA
 
 The novel vulnerability detection approach in IoT OSs and applications:
 
-![framework](figure/MLframework.jpg?raw=true "The proposed method for vulnerability detection in IoT OSs and applications")
+![framework](figure/MLframework.png?raw=true "The proposed method for vulnerability detection in IoT OSs and applications")
 
 Follow the vulnerability classification instruction [here](classifier/README.md)
 

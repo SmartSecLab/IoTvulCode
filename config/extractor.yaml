@@ -1,7 +1,7 @@
 # config file for data extraction from different IoT projects:
 projects: [
 # /Users/guru/research/projects/contiki/tools,
-"/Users/guru/research/projects/contiki/apps",
+# "/Users/guru/research/projects/contiki/apps",
 # "https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download",
 # "https://github.com/contiki-os/contiki/archive/refs/heads/master.zip",
 # "https://github.com/raspberrypi/linux/archive/refs/heads/rpi-6.1.y.zip",
@@ -22,19 +22,21 @@ projects: [
 # /Users/guru/research/projects/contiki/core/,
 #
 # TinyVul-V2 project list:
-# /Users/guru/research/projects/gnucobol,
-# /Users/guru/research/projects/contiki,
-# /Users/guru/research/projects//linux-rpi,
-# /Users/guru/research/projects/ARMmbed,
-# /Users/guru/research/projects/FreeRTOS,
-# /Users/guru/research/projects/micropython, # not in CVE
-# /Users/guru/research/projects/openwrt,
-# /Users/guru/research/projects/RIOT,
-# /Users/guru/research/projects/tinyos, # not in CVE
+/Users/guru/research/projects/gnucobol,
+/Users/guru/research/projects/contiki,
+/Users/guru/research/projects//linux-rpi,
+/Users/guru/research/projects/ARMmbed,
+/Users/guru/research/projects/FreeRTOS,
+/Users/guru/research/projects/micropython, # not in CVE
+/Users/guru/research/projects/openwrt,
+/Users/guru/research/projects/RIOT,
+/Users/guru/research/projects/tinyos, # not in CVE
+/Users/guru/research/projects/mosquitto,
+/Users/guru/research/projects/mbed-os,
 ]
 save:
-  database: data/IoT.db
-  # database: /Users/guru/research/TinyVul-v3.db
+  # database: data/IoT.db
+  database: /Users/guru/research/TinyVul-v2.db
   override: True
   # override the existing files3
   threshold_lines: 5

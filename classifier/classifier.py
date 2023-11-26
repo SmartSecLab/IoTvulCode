@@ -4,10 +4,6 @@ You may use, distribute and modify this code under the
 terms of the MIT license.
 You should have received a copy of the MIT license with
 this file. If not, please write to: https://opensource.org/licenses/MIT
-
-Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smart Environments 
-(funded from the European Union’s Horizon 2020, NGI-POINTER under grant agreement No 871528).
-@Programmer: Guru Bhandari
 """
 
 import warnings
@@ -64,7 +60,8 @@ class Classifier:
             time_now = datetime.now().strftime('%Y-%m-%d_%H.%Mm')
 
         mdir = self.config["model"]["name"] + "-" + str(self.config["dnn"]["epochs"]) + \
-            "-" + Path(self.config["data_file"]).stem + "-" + time_now + "/"
+            "-" + Path(self.config["data_file"]).stem + "-" + \
+            self.config["model"]["type"] + "-" + time_now + "/"
 
         self.config["model"]["path"] = self.config["model"]["path"] + mdir
 
@@ -314,7 +311,6 @@ class Classifier:
         print('-'*40)
         # load the preprocessor
         model_file = self.config["model"]["path"] + "model-final.h5"
-
         df = self.prepro.load_data(data_file=self.config["data_file"])
 
         if self.config['granular'] == 'function':

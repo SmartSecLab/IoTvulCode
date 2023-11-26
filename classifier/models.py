@@ -7,11 +7,8 @@ this file. If not, please write to: https://opensource.org/licenses/MIT
 """
 
 import warnings
-
-# import keras
 import pandas as pd
 import tensorflow as tf
-# import tensorflow_addons as tfa
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.pipeline import Pipeline
@@ -24,10 +21,6 @@ from tensorflow.keras.layers import (ELU, LSTM, BatchNormalization, Bidirectiona
                                      Lambda, MaxPooling1D, SimpleRNN, concatenate)
 from tensorflow.keras.models import (Model, Sequential)
 from tensorflow.keras.optimizers import Adam
-
-
-# from keras_metrics import metrics as km
-
 
 warnings.filterwarnings("ignore")
 

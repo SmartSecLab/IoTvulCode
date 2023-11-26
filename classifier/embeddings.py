@@ -1,7 +1,6 @@
 import re
 from typing import List
 import numpy as np
-import torch
 from clang import cindex
 from gensim.models.word2vec import Word2Vec
 from gensim.models import KeyedVectors
@@ -102,7 +101,8 @@ class PretrainDataset():
 
     def __getitem__(self, i):
         # We’ll pad at the batch level.
-        return torch.tensor(self.examples[i])
+        # return torch.tensor(self.examples[i])
+        return self.examples[i]
 
 
 class MyEmbeddings():

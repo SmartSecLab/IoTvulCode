@@ -1,7 +1,7 @@
 # shortening commands in this Makefile
 
 # local dirs/files to exclude from rsync (also for occurences in subdirectories)
-excludes=.pio .idea .dvc .git .neptune .dvcignore .gitattributes .gitignore venv results data .DS_Store __pycache__ VulBERTa/models/finetuning_models.zip VulBERTa/models/pretraining_model.zip
+excludes=.pio .idea .dvc .git .neptune .dvcignore .gitattributes .gitignore venv results .DS_Store __pycache__ VulBERTa/models/finetuning_models.zip VulBERTa/models/pretraining_model.zip
 includes=VulBERTa/data
 local=ex3-local
 dnat=ex3
