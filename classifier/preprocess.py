@@ -197,9 +197,15 @@ class Preprocessor():
 
         elif self.config['model']['type'].lower() == 'binary':
             # target representation for binary classification
-            df['label'] = df['label'].apply(
-                lambda x: x if x == 'Benign' else 'Vulnerable')
-            # y = [v if v == 'Benign' else 'Vulnerable' for v in y]
+            if 'Benign' in list(df['label'].unique()):
+                df['label'] = df['label'].apply(
+                    lambda x: x if x == 'Benign' else 'Vulnerable')
+                # y = [v if v == 'Benign' else 'Vulnerable' for v in y]
+            elif 0 in list(df['label'].unique()):
+                df['label'] = df['label'].apply(
+                    lambda x: 'Benign' if x == 0 else 'Vulnerable')
+                # y = [v if v == 1 else 0 for v in y]
+
         else:
             raise ValueError(
                 f"Invalid model type: {self.config['model']['type']}."

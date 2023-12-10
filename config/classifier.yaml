@@ -1,14 +1,13 @@
-# data_file: "data/iDetect_refine/DNN-binary.csv"
+data_file: "data/iDetect_refine/DNN-binary.csv"
 # data_file: data/iDetect_refine/DNN-multiclass.csv
 # data_file: data/TinyVul-v2-statement-multiclass.csv
-data_file: data/tinyvul/TinyVul-v2-function.csv
-granular: function
+# data_file: data/tinyvul/TinyVul-v2-function.csv
+granular: statement
 vectorized_data: VulBERTa/data/dummy/data.pkl
 result_dir: result/
 apply_balancer: False # True if you want to apply the classes' balancer
 train: True
 test: True
-
 eval: False
 eval_data: data/iDetect_refine/DNN-binary.csv # for statement
 debug: False # mode: turn debugging mode True for preprocessing on debug_rows
@@ -62,7 +61,7 @@ embedding:
   embedding_dim: 100
   input_files: [
       # "VulBERTa/data/dummy/models.py",
-      "VulBERTa/data/vulberta/tokenizer/drapgh.txt",
+      # "VulBERTa/data/vulberta/tokenizer/drapgh.txt",
       "VulBERTa/data/tinyvul/tinyvul.txt",
     ] # list of input files
   embedding_size: 150 # size of each dimension

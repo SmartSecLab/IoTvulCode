@@ -34,15 +34,27 @@ deploy-auto:
 	*) rsync -avzhHP -e 'ssh -p 60441' $(addprefix --exclude , $(patsubst %,'%',$(excludes))) . ${dnat}:${ex3project} ;; \
 	esac
 
+local:
+	rsync -avzhHP -e . guru@10.0.0.30:IoTvulCode\
+
 plots:
 	@case `curl ifconfig.me` in \
     158.36.4.* ) case `hostname -f` in \
                  *.cm.cluster) echo "looks like we're on eX3, this command is meant to run from your local machine..." ;; \
-                 *) rsync -avzhHP -e 'ssh' ${local}:${ex3project}/results --exclude "**/tb" --include "*/" --include "*.jpg" --exclude "*" . && find results -empty -type d -delete ;; \
+                 *) rsync -avzhHP -e 'ssh' ${local}:${ex3project}/result --exclude "**/tb" --include "*/" --include "*.jpg" --exclude "*" . && find results -empty -type d -delete ;; \
                  esac ;; \
-	*) rsync -avzhHP -e 'ssh -p 60441' ${dnat}:${ex3project}/results --exclude "**/tb" --include "*/" --include "*.jpg" --exclude "*" . && find results -empty -type d -delete ;; \
+	*) rsync -avzhHP -e 'ssh -p 60441' ${dnat}:${ex3project}/result --exclude "**/tb" --include "*/" --include "*.jpg" --exclude "*" . && find results -empty -type d -delete ;; \
 	esac
-	
+
+getmodel:
+	@case `curl ifconfig.me` in \
+    158.36.4.* ) case `hostname -f` in \
+                 *.cm.cluster) echo "looks like we're on eX3, this command is meant to run from your local machine..." ;; \
+                 *) rsync -avzhHP -e 'ssh' ${local}:${ex3project}/result result-complete/ ;; \
+                 esac ;; \
+	*) rsync -avzhHP -e 'ssh -p 60441' ${dnat}:${ex3project}/result result-complete/ ;; \
+	esac
+
 venv:
 	@case `hostname -f` in \
 	*.cm.cluster)  (  eval "$$(grep '^module ' slurm_train.sh)"; \

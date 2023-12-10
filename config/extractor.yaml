@@ -27,10 +27,10 @@ projects: [
 /Users/guru/research/projects//linux-rpi,
 /Users/guru/research/projects/ARMmbed,
 /Users/guru/research/projects/FreeRTOS,
-/Users/guru/research/projects/micropython, # not in CVE
+/Users/guru/research/projects/micropython, 
 /Users/guru/research/projects/openwrt,
 /Users/guru/research/projects/RIOT,
-/Users/guru/research/projects/tinyos, # not in CVE
+/Users/guru/research/projects/tinyos, 
 /Users/guru/research/projects/mosquitto,
 /Users/guru/research/projects/mbed-os,
 ]
