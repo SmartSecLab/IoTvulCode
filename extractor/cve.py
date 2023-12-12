@@ -27,10 +27,6 @@ import requests
 import yaml
 from pandas import json_normalize
 
-# from extract_cwe_record import add_cwe_class,  extract_cwe
-# import configuration as cf
-# import database as db
-
 # ---------------------------------------------------------------------------------------------------------------------
 
 urlhead = "https://nvd.nist.gov/feeds/json/cve/1.1/nvdcve-1.1-"

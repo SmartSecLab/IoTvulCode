@@ -52,12 +52,6 @@ def save_csv_from_TinyVul(df_fun, df_stat, csv_path):
     df_stat = correct_multi_label(df_stat)
     df_fun.to_csv(f"{csv_path}-function.csv", index=False)
     df_stat.to_csv(f"{csv_path}-statement.csv", index=False)
-
-    # # Save binary CSVs
-    # df_fun = convert_multi2binary(df_fun)
-    # df_stat = convert_multi2binary(df_stat)
-    # df_fun.to_csv(f"{csv_path}-function-binary.csv", index=False)
-    # df_stat.to_csv(f"{csv_path}-statement-binary.csv", index=False)
     print(f'Saved at: data/{csv_path}-<name>.csv')
 
 
@@ -79,7 +73,6 @@ def parse_args():
 
 
 if __name__ == "__main__":
-    # database = '/Users/guru/research/TinyVul-v2.db'
     args = parse_args()
     db_name = Path(args.database).name.replace('.db', '')
     Path(args.output).mkdir(parents=True, exist_ok=True)

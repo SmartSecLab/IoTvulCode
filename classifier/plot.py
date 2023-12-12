@@ -18,7 +18,6 @@ class Plotter:
     def plot_metrics(self, history):
         print(history.history.keys())
         plt.plot(history.history["acc"])
-        # plt.plot(history.history['loss'])
         plt.title("The CNN model accuracy")
         plt.ylabel("Accuracy")
         plt.xlabel("Epoch")
@@ -95,18 +94,3 @@ class Plotter:
         plt.xlabel("Training examples")
         plt.ylabel("Score")
         plt.savefig(fig_name)
-
-
-# print(model.summary())
-# model_fig = 'model_plot.png'
-# plot_model(model, to_file=model_fig, show_shapes=True, show_layer_names=True)
-# print(f'Model architecture is saved at {model_fig}')
-
-# token_sizes = [len(x) for x in X_train]
-# token_sizes_pd = pd.Series(token_sizes)
-# print("Token distribution:")
-# print(token_sizes_pd.describe())
-
-# max_length = MAX_LEN
-# token_sizes_pd = token_sizes_pd[token_sizes_pd <= MAX_LEN]
-# # token_sizes_pd.plot.box()

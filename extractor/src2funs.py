@@ -70,7 +70,6 @@ class FunsCollector:
         fun_trees = self.xpath_on_tree(tree, '//src:function')
         functions = [self.function_tree2source(
             fun_tree) for fun_tree in fun_trees]
-        # print('Functions generated!')
         return functions
 
     def write_functions_file(self, file, functions):
@@ -80,15 +79,9 @@ class FunsCollector:
 
     def src2src_functions(self, src):
         """retrieve functions from the src:file/dir of source code"""
-        # try:
         tree = self.src2xml(src)
         tree = etree.fromstring(tree.encode('utf-8'))
-        # print('Tree represented!')
         return self.extract_functions_from_srcML(tree)
-
-        # except Exception as err:
-        #     print(f'Error on src2src_function code: {err}')
-        #     return []
 
     def fix_cwe_labeling(self, cwe) -> str:
         """ Extract CWE type information,
@@ -126,12 +119,10 @@ class FunsCollector:
 
             flaw_records = list(
                 dict(enumerate(zip(lines, cwes, context, tool))).values())
-            # print(f'Flaw_records_size: {len(flaw_records)}')
 
             if nall_funs > 200 and len(flaw_records) > 1000:
                 random.seed(20)
                 all_funs = random.sample(all_funs, 10)
-                # print(f'Len of funs: {len(all_funs)}')
 
             for fun, record in itertools.product(all_funs, flaw_records):
 

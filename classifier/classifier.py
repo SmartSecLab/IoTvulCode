@@ -188,16 +188,6 @@ class Classifier:
                 )
                 tf_callbacks.append(neptune_cbk)
 
-            # class_weights = class_weight.compute_class_weight(
-            #     class_weight='balanced',
-            #     classes=np.unique(y_train),
-            #     y=y_train)
-
-            # class_weights = dict(enumerate(class_weights))
-            # # try: hardcoded blancer
-            # # class_weights = {0: 0.5, 1: 0.5}
-            # print(f'Class_weights: {class_weights}')
-
             # Fitting model and cross-validation
             # Apply callbacks for training to store the best model checkpoint
             # and apply early stopping.
@@ -209,10 +199,6 @@ class Classifier:
                 validation_data=(X_test.tolist(), y_test.tolist()),
                 verbose=1,
                 callbacks=[tf_callbacks],
-                # use_multiprocessing=True,
-                # workers=8,
-                # callbacks=[DVCLiveCallback(save_dvc_exp=True)],
-                # class_weight=class_weights,
             )
 
             fig_name = self.config["model"]["path"] + model_name
@@ -224,7 +210,6 @@ class Classifier:
                 nt_run["learning_curves"].track_files(fig_name + ".pdf")
                 nt_run["loss_curve"].track_files(fig_name + "_loss.pdf")
         else:
-            # TODO: log non-DNN models output to Neptune
             # Fitting
             self.arch = ModelArchs(self.config)
             model = self.arch.apply_RF(input_data=X_train)
@@ -258,22 +243,12 @@ class Classifier:
         """
         print(f'Model Type: {type(model)}')
         if self.config["model"]["name"] != "RF":
-            # if type(model) == 'keras.src.engine.functional.Functional':
-            #     print("Model is a functional model")
-            #     model.summary()
-            #     model = self.util.load_tf_model(model)
-            # elif Path(model).is_file():
-
             print("\nEvaluating the model...\n")
             # evaluate the model
             eval_result = model.evaluate(X_eval, y_eval, verbose=1)
             print(f'Evaluation Result: {eval_result}')
             print('\nDone evaluation!\n')
             print('='*40)
-
-            # # predict the model
-            # y_pred = model.predict(X_eval)
-            # self.reconstruct_labels(y_eval, y_pred)
         else:
             result = model.score(X_eval, y_eval)
             print("Result: ", result)

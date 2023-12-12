@@ -58,22 +58,6 @@ class MyTokenizer:
     def pre_tokenize(self, pretok: PreTokenizedString):
         pretok.split(self.clang_split)
 
-# def tokenize_using_clang(self, code: str):
-#     """Tokenize code using clang"""
-#     index = cindex.Index.create()
-#     tu = index.parse('tmp.cpp', args=['-std=c++11'],
-#                      unsaved_files=[('tmp.cpp', code)])
-#     tokens = []
-#     for token in tu.get_tokens(extent=tu.cursor.extent):
-#         # tokens.append(token.spelling)
-#         spelling = token.spelling.strip()
-#         if spelling == '':
-#             continue
-#         spelling = spelling.replace(' ', '')
-#         tokens.append(NormalizedString(spelling))
-#         # tokens.append(spelling)
-#     return tokens
-
 
 class PretrainDataset():
     def __init__(self, custom_tokenizer, dataX, max_len):
@@ -95,9 +79,6 @@ class PretrainDataset():
 
         # mydata = pd.read_pickle('data/vulberta/pretrain/drapgh.pkl')
         dataX['code'] = dataX['code'].apply(cleaner)
-        # mydata.functionSource = mydata.functionSource.apply(cleaner)
-        # disable below line it suffles rows
-        # dataX = dataX.sample(frac=1)
         dataX = dataX['code']
         # lines = src_file.read_text(encoding="utf-8").splitlines()
         self.examples += [
@@ -168,10 +149,6 @@ class MyEmbeddings():
                                  show_progress=True, special_tokens=st)
             tokenizer.train(input_files, trainer)
             tokenizer.save(self.vocab_file)
-            # use this to get vocab.json and merges.txt both
-            # tokenizer.model.save(self.emb_path)
-            # tokenizer.model.save_pretrained(self.emb_path)
-            # trainer.save_pretrained(trainer)
             print(f'Trained tokenizer is saved at {self.emb_path}')
         tokenizer.pre_tokenizer = PreTokenizer.custom(MyTokenizer())
         print('='*40)

@@ -52,8 +52,6 @@ class Analyzers:
         Recursively Remove .DS_Store which was introducing encoding error,
         https://jonbellah.com/articles/recursively-remove-ds-store
         ignore all files with . start and compiled sources
-        TODO extract .zip file for further flaw finding
-        TODO fix: Empty source code provided
         """
         pl = 'unknown'
 
@@ -145,7 +143,6 @@ class Analyzers:
         """find flaws in the file using CppCheck tool
         """
         df = pd.DataFrame()
-        # cmd = "cppcheck -f " + file + " --xml --xml-version=2"
         cmd = "cppcheck -f " + file + " --xml --xml-version=2"
         # avoid shell=True, it works but doesn't stop at Timeout
         process = sub.Popen(cmd.split(), stdout=sub.PIPE, stderr=sub.STDOUT)
@@ -319,8 +316,6 @@ class Analyzers:
             errors="ignore"))
         # do this after merging 'suggestion to 'note' column
         if len(df_ff) > 0:
-            # np_concat = np.vectorize(concat)
-            # df_ff["note"] = np_concat(df_ff["suggestion"], df_ff["note"])
             df_ff["note"] = (
                 df_ff["suggestion"].astype(
                     str) + "  " + df_ff["note"].astype(str)
@@ -400,11 +395,11 @@ class Analyzers:
         return df_merged
 
 
-if __name__ == "__main__":
-    test_file = "data/projects/contiki-2.4/apps/webbrowser/www.c"
-    test_dir = "data/projects/contiki-2.4/"
-    st = SecTools()
+# if __name__ == "__main__":
+#     test_file = "data/projects/contiki-2.4/apps/webbrowser/www.c"
+#     test_dir = "data/projects/contiki-2.4/"
+#     st = Analyzers()
 
-    df_flaw = st.apply_flawfinder(test_file)
-    # df_flaw = st.merge_tools_result(test_dir)
-    print(df_flaw)
+#     df_flaw = st.apply_flawfinder(test_file)
+#     # df_flaw = st.merge_tools_result(test_dir)
+#     print(df_flaw)

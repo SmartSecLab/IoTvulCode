@@ -80,7 +80,6 @@ class ModelArchs:
 
     def optimize_model(self, model):
         """apply optimizer"""
-        # model = Model(inputs=main_input, outputs=emb_layer)
         optim = Adam(
             learning_rate=1e-4,
             # beta_1=self.beta_1,
@@ -88,7 +87,6 @@ class ModelArchs:
             # epsilon=self.epsilon,
             # decay=self.decay,  # deprecated from Keras 2.3
         )
-        # model.compile(optimizer=optim, loss=self.loss, metrics=self.metrics)
         model.compile(optimizer=optim, loss=self.loss, metrics=self.metrics)
         print(f"\n {model.summary()}")
         return model
@@ -98,13 +96,9 @@ class ModelArchs:
         RNN Model for Binary and Multiclass Classification
         """
         # Main Input
-        # main_input = Input(shape=(self.max_len,), dtype="int32")
-
         main_input = Input(shape=(self.max_len,))
 
         # Embedding Layers
-        # emb_layer = Embedding(input_dim=150, output_dim=32, input_length=150,
-        # W_regularizer=regularizers.l2(1e-4))(main_input)  # original license
         emb_layer = Embedding(
             input_dim=self.input_dim,
             output_dim=self.output_dim,
@@ -119,13 +113,6 @@ class ModelArchs:
                 recurrent_dropout=self.recur_dropout,
             )
         )(emb_layer)
-        # <guru> I think the activation function should be 'sigmoid' here
-        # for binary classification???
-        # emb_layer = Dense(55, activation="softmax")(
-        #     emb_layer)  # iDetech original - static
-
-        # initializer = tf.keras.initializers.RandomNormal(
-        #     mean=0.0, stddev=0.05, seed=None)
         initializer = tf.keras.initializers.RandomNormal(mean=0., stddev=1.)
 
         emb_layer = Dense(
@@ -197,8 +184,6 @@ class ModelArchs:
                            dtype="int32", name="main_input")
 
         # Embedding layer
-        # emb = Embedding(input_dim=max_vocab_len, output_dim=emb_dim, input_length=max_len,
-        #             W_regularizer=W_reg)(main_input)  # original with W_regularizer
         emb = Embedding(
             input_dim=self.max_vocab_len,
             output_dim=self.emb_dim,
@@ -211,8 +196,6 @@ class ModelArchs:
 
         def get_conv_layer(emb, kernel_size=5, filters=150):
             # Conv layer
-            # conv = Convolution1D(kernel_size=kernel_size, filters=filters, \
-            #              border_mode='same')(emb)  # Original with tf1.5 now 'boarder_mode' is 'padding'
             conv = Convolution1D(
                 kernel_size=kernel_size, filters=filters, padding="same"
             )(emb)

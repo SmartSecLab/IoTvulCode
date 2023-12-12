@@ -154,17 +154,11 @@ class Preprocessor():
 
     def show_y(self, y):
         """Count the number of labels in the dataset"""
-        # weights = list(np.bincount(y))
-        # weights = {i: weights[i] for i in range(len(weights))}
         print('\n\n' + '+'*30)
         # print(f'Weight of labels:\n{weights}')
         labels_dist = pd.Series(y).value_counts()
         print(f'\nDistribution of targets: \n{labels_dist}')
         print(f'\n#classes: {len(labels_dist)}')
-
-        # if len(labels_dist) < 2:
-        #     raise ValueError('Only one class found in the dataset.')
-        # exit(0)
         print('+'*30)
 
     # define function to apply RandomOverSampler
@@ -189,10 +183,6 @@ class Preprocessor():
     def process_data(self, df):
         """Split data into train and test sets"""
         if self.config['model']['type'].lower() == 'multiclass':
-            # TODO: do we need this filterization?
-            # filter out labels with less than 200 samples
-            # df = df.groupby('label').filter(
-            #     lambda v: len(v) > 100).reset_index(drop=True)
             pass
 
         elif self.config['model']['type'].lower() == 'binary':
@@ -200,11 +190,9 @@ class Preprocessor():
             if 'Benign' in list(df['label'].unique()):
                 df['label'] = df['label'].apply(
                     lambda x: x if x == 'Benign' else 'Vulnerable')
-                # y = [v if v == 'Benign' else 'Vulnerable' for v in y]
             elif 0 in list(df['label'].unique()):
                 df['label'] = df['label'].apply(
                     lambda x: 'Benign' if x == 0 else 'Vulnerable')
-                # y = [v if v == 1 else 0 for v in y]
 
         else:
             raise ValueError(
