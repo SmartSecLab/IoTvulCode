@@ -57,16 +57,16 @@ def save_csv_from_TinyVul(df_fun, df_stat, csv_path):
 
 def parse_args():
     """ parse command line arguments 
-    Usage: python db2csvs.py -d <path/to/database.db> -o <path/to/output/dir>
-
+    Usage: python db2csv.py -d <path/to/database.db> -o <path/to/output/dir>
     """
     parser = ArgumentParser(
-        description='Convert TinyVul DB to CSVs')
+        description='Convert IoTvulCode DB to CSVs')
+    # give database file as an argument
     parser.add_argument('--database', '-d', type=str,
-                        default='/Users/guru/research/TinyVul-v2.db',
-                        help='TinyVul database file')
+                        default='data/IoTvulCode.db',
+                        help='IoTvulCode database file')
     # give output file as another argument
-    parser.add_argument('--output', '-o', type=str, default="data/tinyvul/",
+    parser.add_argument('--output', '-o', type=str, default="data/IoTvulCode/",
                         help="Output directory to save the CSVs")
     args = parser.parse_args()
     return args
