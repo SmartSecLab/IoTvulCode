@@ -1,5 +1,5 @@
-data_file: "data/iDetect_refine/DNN-binary.csv"
-# data_file: data/iDetect_refine/DNN-multiclass.csv
+# data_file: "data/iDetect_refine/DNN-binary.csv"
+data_file: data/iDetect_refine/DNN-multiclass.csv
 # data_file: data/TinyVul-v2-statement-multiclass.csv
 # data_file: data/tinyvul/TinyVul-v2-function.csv
 granular: statement
@@ -23,7 +23,7 @@ preprocess:
 
 model: # settings for training and testing experiments
   seed: 30 # seed for reproduciability to generate same set of samples
-  type: binary # binary or multiclass
+  type: multiclass # binary or multiclass
   name: RNN # RNN, LSTM, CNN or RF - RandomForest, multiDNN, DNN
   k-fold: 20 # number of cross-validation folds
   split_ratio: 0.30 # ratio of training and testing ratio

@@ -204,3 +204,16 @@ infer.py
 notebooks/figure/
 pytests/
 dvclive
+figure/train-acc.png
+figure/train-loss.png
+figure/train-precision.png
+figure/train-recall.png
+figure/val-acc.png
+figure/val-loss.png
+figure/val-precision.png
+figure/val-recall.png
+figure/vul_statistics.pdf
+Makefile-local
+VulBERTa/
+dvc_plots
+data/classes.pkl

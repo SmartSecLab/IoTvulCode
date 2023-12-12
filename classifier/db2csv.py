@@ -54,6 +54,10 @@ def save_csv_from_TinyVul(df_fun, df_stat, csv_path):
 
 
 def parse_args():
+    """ parse command line arguments 
+    Usage: python db2csvs.py -d <path/to/database.db> -o <path/to/output/dir>
+
+    """
     parser = ArgumentParser(
         description='Convert TinyVul DB to CSVs')
     parser.add_argument('--database', '-d', type=str,
