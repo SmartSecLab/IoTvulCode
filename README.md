@@ -1,4 +1,5 @@
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![source under MIT licence](https://img.shields.io/badge/source%20license-MIT-green)](LICENSE.txt)
+[![data under CC BY 4.0 license](https://img.shields.io/badge/data%20license-CC%20BY%204.0-green)](https://creativecommons.org/licenses/by/4.0/)
 
 # Vulnerability detection in IoT software analyzing open-source code:
 
