@@ -1,5 +1,13 @@
 # -*- coding: utf-8 -*-
 """
+Copyright (C) 2023 SmartSecLab, Kristiania University College- All Rights Reserved
+You may use, distribute and modify this code under the
+terms of the MIT license.
+You should have received a copy of the MIT license with
+this file. If not, please write to: https://opensource.org/licenses/MIT
+@Programmer: Guru Bhandari
+
+File description:
 grepping function from the given file of the code.
 """
 import itertools

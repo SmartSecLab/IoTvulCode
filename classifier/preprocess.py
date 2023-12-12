@@ -1,5 +1,5 @@
 """
-Copyright (C) 2023 Kristiania University College- All Rights Reserved
+Copyright (C) 2023 SmartSecLab, Kristiania University College- All Rights Reserved
 You may use, distribute and modify this code under the
 terms of the MIT license.
 You should have received a copy of the MIT license with

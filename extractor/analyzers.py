@@ -1,8 +1,19 @@
 # -*- coding: utf-8 -*-
 """
+Copyright (C) 2023 SmartSecLab, Kristiania University College- All Rights Reserved
+You may use, distribute and modify this code under the
+terms of the MIT license.
+You should have received a copy of the MIT license with
+this file. If not, please write to: https://opensource.org/licenses/MIT
+@Programmer: Guru Bhandari
+"""
+"""
 Grepping functions from the vulnerability context of the file.
 Fetching the functions which have given line context/statement.
 """
+
+
+
 
 import os
 import subprocess as sub
@@ -10,13 +21,9 @@ import xml.etree.ElementTree as et
 from io import StringIO
 from pathlib import Path
 from threading import Timer
-
 import numpy as np
 import pandas as pd
-
 from extractor.utility import Utility
-
-
 class Analyzers:
     """This class applies static code analyzers via commands
     """

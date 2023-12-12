@@ -29,7 +29,7 @@ model: # settings for training and testing experiments
   split_ratio: 0.30 # ratio of training and testing ratio
   path: result/
   save: False # do you want to save the trained model or not?
-  use_neptune: True # switch between enabling neptune usage or not
+  use_neptune: False # switch between enabling neptune usage or not
 
 dnn:
   epochs: 120 # default iDetect 800

@@ -1,13 +1,10 @@
 """
-Copyright (C) 2023 Kristiania University College- All Rights Reserved
+Copyright (C) 2023 SmartSecLab, Kristiania University College- All Rights Reserved
 You may use, distribute and modify this code under the
 terms of the MIT license.
 You should have received a copy of the MIT license with
 this file. If not, please write to: https://opensource.org/licenses/MIT
-
-Authors: Guru Bhandari, and Andrii Shalaginov
-Project: ENViSEC - Artificial Intelligence-enabled Cybersecurity for Future Smart Environments 
-(funded from the European Union’s Horizon 2020, NGI-POINTER under grant agreement No 871528).
+@Programmer: Guru Bhandari
 
 File Description:
 Code to retrieve the references of IoT projects.
