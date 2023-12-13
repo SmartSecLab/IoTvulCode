@@ -4,9 +4,7 @@
 # Vulnerability detection in IoT software analyzing open-source code:
 
 In this study, we have presented an IoT vulnerability data extraction tool and machine learning methods to detect vulnerabilities in the C\C++ source code of IoT operating systems(OS) and applications.
-The source code of various IoT OSs and applications was used to create a binary and multi-class labeled dataset including both vulnerable and benign samples.
-To make the dataset more generic to the common standard of the C\C++ source code, we have selected the IoT OS, and application if there is at least an entry of the project in the Common Vulnerability and Enumerations (CVE).
-The types of vulnerabilities in the presented dataset are linked to the Common Weakness Enumeration (CWE) records.
+The source code of various IoT OSs and applications was used to create a binary and multi-class labeled dataset including both vulnerable and benign samples. The types of vulnerabilities in the presented dataset are linked to the Common Weakness Enumeration (CWE) records.
 
 ## Dataset extraction approach for IoT vulnerability analysis:
 
@@ -47,4 +45,4 @@ pip install -r requirements.txt
 
 ## Acknowledgements:
 
-This work is a part of the [ENViSEC](https://smartseclab.com/envisec/) project which has received funding from the‌ European Union’s Horizon 2020 research and innovation program within the framework of the NGI POINTER Project funded under grant agreement# 871528.# IoTvulCode
+The research presented in this paper has benefited from the Experimental Infrastructure for Exploration of Exascale Computing (eX3), which is financially supported by the Research Council of Norway under contract 270053.
