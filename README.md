@@ -1,5 +1,6 @@
 [![source under MIT licence](https://img.shields.io/badge/source%20license-MIT-green)](LICENSE.txt)
 [![data under CC BY 4.0 license](https://img.shields.io/badge/data%20license-CC%20BY%204.0-green)](https://creativecommons.org/licenses/by/4.0/)
+[![Open in Code Ocean](https://codeocean.com/codeocean-assets/badge/open-in-code-ocean.svg)](https://codeocean.com/capsule/0170549/tree)
 
 # Vulnerability detection in IoT software analyzing open-source code:
 
