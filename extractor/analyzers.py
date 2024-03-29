@@ -154,6 +154,7 @@ class Analyzers:
             df = self.correct_label(df)
             # adding context since cppcheck does not report statement,
             # index starts from zero, therefore row.line-1
+            df['context'] = ''
             df['context'] = df.apply(
                 lambda row: self.get_statement(file, row.line-1), axis=1)
         finally:

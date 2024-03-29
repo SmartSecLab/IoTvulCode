@@ -1,42 +1,19 @@
 # config file for data extraction from different IoT projects:
 projects: [
-# /Users/guru/research/projects/contiki/tools,
-# "/Users/guru/research/projects/contiki/apps",
-# "https://sourceforge.net/projects/contiki/files/Contiki/Contiki%202.4/contiki-sky-2.4.zip/download",
-# "https://github.com/contiki-os/contiki/archive/refs/heads/master.zip",
-# "https://github.com/raspberrypi/linux/archive/refs/heads/rpi-6.1.y.zip",
-# "https://github.com/raspberrypi/firmware/archive/refs/heads/master.zip",
-# "https://github.com/SmartSecLab/ENViSEC/archive/refs/heads/main.zip",
-# "/Users/guru/research/contiki-master",
-# "/Users/guru/research/contiki-master/",
-# data/projects/contiki-2.4/cpu/cc2430/,
-# /Users/guru/research/projects/gnucobol/libcob,
-# /Users/guru/research/projects/gnucobol/lib/,
-# data/projects/contiki-2.4/apps/shell/,
-# /Users/guru/research/projects/FreeRTOS/FreeRTOS-Plus/ThirdParty/wolfSSL/tests,
-# /Users/guru/research/projects/ARMmbed/targets/TARGET_STM/TARGET_STM32H7/TARGET_STM32H747xI/TARGET_PORTENTA_H7/COMPONENT_WHD/resources/firmware/COMPONENT_4343W_FS/,
-# data/projects/contiki-2.4/core/net/rime/rudolph1.h, # error
-# data/projects/contiki-2.4/core/net/rime, # error
-# /Users/guru/research/projects//linux-rpi/kernel/time,
-# /Users/guru/research/projects/contiki/platform/sky/dev/,
-# /Users/guru/research/projects/contiki/core/,
-#
-# TinyVul-V2 project list:
-/Users/guru/research/projects/gnucobol,
-/Users/guru/research/projects/contiki,
-/Users/guru/research/projects//linux-rpi,
-/Users/guru/research/projects/ARMmbed,
-/Users/guru/research/projects/FreeRTOS,
-/Users/guru/research/projects/micropython, 
-/Users/guru/research/projects/openwrt,
-/Users/guru/research/projects/RIOT,
-/Users/guru/research/projects/tinyos, 
-/Users/guru/research/projects/mosquitto,
-/Users/guru/research/projects/mbed-os,
+data/projects/gnucobol,
+data/projects/contiki,
+data/projects/linux-rpi,
+data/projects/ARMmbed,
+data/projects/FreeRTOS,
+data/projects/micropython, 
+data/projects/openwrt,
+data/projects/RIOT,
+data/projects/tinyos, 
+data/projects/mosquitto,
+data/projects/mbed-os,
 ]
 save:
-  # database: data/IoT.db
-  database: /Users/guru/research/TinyVul-v2.db
+  database: data/IoTvulCode.db
   override: True
   # override the existing files3
   threshold_lines: 5

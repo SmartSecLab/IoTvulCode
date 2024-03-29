@@ -301,7 +301,7 @@ class Extractor:
 
     def run_extractor(self):
         """Add new projects to the database"""
-        status_of_all = ext.iterate_projects()
+        status_of_all = self.iterate_projects()
 
         if status_of_all:
             print("=" * 50)
@@ -318,7 +318,7 @@ class Extractor:
         self.db.cursor.close()
 
         # total time elapsed
-        time_elapsed = time.time() - ext.start_time
+        time_elapsed = time.time() - self.start_time
         print("\n" + "="*50)
         print(f"Total time elapsed: {format_timespan(time_elapsed)}")
         print("="*50)
