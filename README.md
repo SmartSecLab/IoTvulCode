@@ -44,6 +44,21 @@ pip install pip==23.3.1
 pip install -r requirements.txt
 ```
 
+# Citation:
+
+Please cite this project work by referring to the paper:
+
+> Bhandari, G.P., Assres, G., Gavric, N. et al. IoTvulCode: AI-enabled vulnerability detection in software products designed for IoT applications. Int. J. Inf. Secur. (2024). https://doi.org/10.1007/s10207-024-00848-6.
+
+    @article{Bhandari2024,
+    title={IoTvulCode: AI-enabled vulnerability detection in software products designed for IoT applications},
+    author={Guru Prasad Bhandari, Gebremariam Assres, Nikola Gavric, Andrii Shalaginov & Tor-Morten Grønli},
+    journal={International Journal of Information Security},
+    doi={10.1007/s10207-024-00848-6}
+    year={2024},
+    publisher={Springer}
+    }
+
 ## Acknowledgements:
 
 The research presented in this paper has benefited from the Experimental Infrastructure for Exploration of Exascale Computing (eX3), which is financially supported by the Research Council of Norway under contract 270053.
